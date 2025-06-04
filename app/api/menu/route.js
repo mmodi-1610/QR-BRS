@@ -39,6 +39,16 @@ export async function GET(request) {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(MONGODB_URI);
     }
+
+    // Check for public menu fetch by restaurantId
+    const { searchParams } = new URL(request.url);
+    const restaurantId = searchParams.get("restaurantId");
+    if (restaurantId) {
+      const menu = await Menu.findOne({ user: restaurantId });
+      return NextResponse.json({ success: true, menu });
+    }
+
+    // Otherwise, require authentication
     const token = request.cookies.get("token")?.value;
     if (!token) return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
 

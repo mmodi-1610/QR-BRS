@@ -25,6 +25,7 @@ export async function middleware(request) {
     // Verify JWT
     const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET));
 
+
     // Role-based route protection
     if (pathname.startsWith("/adminDashboard") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
@@ -42,7 +43,6 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    
     if (pathname.startsWith("/kitchenDashboard") && payload.role !== "kitchen") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
