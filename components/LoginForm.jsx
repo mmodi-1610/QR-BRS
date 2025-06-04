@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,13 +23,13 @@ function LoginForm() {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     });
 
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: ""
+        [name]: "",
       });
     }
     if (showError) {
@@ -50,6 +50,7 @@ function LoginForm() {
   };
 
   const handleSubmit = async (e) => {
+    console.log("change");
     e.preventDefault();
 
     if (!validateForm()) {
@@ -60,11 +61,14 @@ function LoginForm() {
 
     try {
       // Call login API with role
-    const response = await axios.post("/api/user/login", {
-      usernameOrEmail: formData.username,
-      password: formData.password,
-      role: formData.role,
-    });
+      const response = await axios.post(
+        "/api/user/login",
+        {
+          usernameOrEmail: formData.username,
+          password: formData.password,
+          role: formData.role,
+        }
+      );
 
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
@@ -72,25 +76,31 @@ function LoginForm() {
         localStorage.setItem("email", response.data.email);
         localStorage.setItem("role", formData.role);
 
-
-        Cookies.set("token", response.data.token, { expires: 1 }); // 1 day expiry
-
+        Cookies.set("token", response.data.token, {
+          expires: 1,
+          secure: true,
+          sameSite: "Lax",
+        });
 
         // Role-based redirect
         if (formData.role === "admin") {
+          console.log('redirecting to admin dashboard')
           router.push("/adminDashboard");
         } else if (formData.role === "kitchen") {
           router.push("/kitchenDashboard");
         } else {
+          console.log("fallback");
           router.push("/"); // fallback
         }
-
-
       } else {
         throw new Error(response.data.message || "Login failed");
       }
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || error.message || "Invalid username or password. Please try again.");
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Invalid username or password. Please try again."
+      );
       setShowError(true);
     } finally {
       setIsLoading(false);
@@ -168,13 +178,17 @@ function LoginForm() {
           className={`form-control ${errors.password ? "is-invalid" : ""}`}
           id="password"
           name="password"
-          placeholder={formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
+          placeholder={
+            formData.role === "admin" ? "Admin Password" : "Kitchen Password"
+          }
           value={formData.password}
           onChange={handleChange}
           disabled={isLoading}
           required
         />
-        <label htmlFor="password">{formData.role === "admin" ? "Admin Password" : "Kitchen Password"}</label>
+        <label htmlFor="password">
+          {formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
+        </label>
         {errors.password && (
           <div className="invalid-feedback">{errors.password}</div>
         )}
@@ -189,7 +203,11 @@ function LoginForm() {
         >
           {isLoading ? (
             <>
-              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              <span
+                className="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></span>
               Signing in...
             </>
           ) : (
