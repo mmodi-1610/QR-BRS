@@ -85,8 +85,9 @@ function LoginForm() {
         // Role-based redirect
         if (formData.role === "admin") {
           console.log('redirecting to admin dashboard')
-          router.push("/adminDashboard");
+          router.replace("/adminDashboard");
         } else if (formData.role === "kitchen") {
+          console.log('redirecting to kitchen dashboard')
           router.push("/kitchenDashboard");
         } else {
           console.log("fallback");
