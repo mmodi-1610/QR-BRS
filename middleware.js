@@ -42,5 +42,11 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/adminDashboard/:path*", "/kitchenDashboard/:path*"], // Protect these routes
+  matcher: [
+    "/adminDashboard/:path*",
+    "/kitchenDashboard/:path*",
+    // "/menuBuilder/:path*",
+    "/orderManagement/:path*",
+    "/QRGenerator/:path*"
+  ],
 };
