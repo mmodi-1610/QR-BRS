@@ -45,7 +45,7 @@ export const config = {
   matcher: [
     "/adminDashboard/:path*",
     "/kitchenDashboard/:path*",
-    // "/menuBuilder/:path*",
+    "/menuBuilder/:path*",
     "/orderManagement/:path*",
     "/QRGenerator/:path*"
   ],
