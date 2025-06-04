@@ -29,9 +29,25 @@ export async function middleware(request) {
     if (pathname.startsWith("/adminDashboard") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
+
+   if (pathname.startsWith("/menuBuilder") && payload.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    if (pathname.startsWith("/QRGenerator") && payload.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+   if (pathname.startsWith("/orderManagement") && payload.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    
     if (pathname.startsWith("/kitchenDashboard") && payload.role !== "kitchen") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
+
+
 
     // Allow access
     return NextResponse.next();
