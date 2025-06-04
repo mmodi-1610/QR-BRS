@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import Menu from "@/models/Menu";
+import Menu from "@/models/Menu"
 import jwt from "jsonwebtoken";
 
 const MONGODB_URI = process.env.MONGODB_URI;

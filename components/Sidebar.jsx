@@ -8,17 +8,26 @@ import { Home, Calendar, PlusCircle, Download, Printer, Settings, ChevronRight, 
 
 function Sidebar_new(){
   const username=localStorage.getItem("username")
+    // const NavItem = ({ href, icon, children, isActive }) => {
+    //     return (
+    //       <Link href={href} legacyBehavior >
+    //         <a className={`nav-link py-2 px-3 mb-1 rounded d-flex align-items-center ${isActive ? 'active bg-primary text-white' : 'text-dark'}`}>
+    //           {icon}
+    //           <span className="ms-3">{children}</span>
+    //           {isActive && <ChevronRight className="ms-auto" size={16} />}
+    //         </a>
+    //       </Link>
+    //     );
+    //   };
     const NavItem = ({ href, icon, children, isActive }) => {
-        return (
-          <Link href={href} legacyBehavior>
-            <a className={`nav-link py-2 px-3 mb-1 rounded d-flex align-items-center ${isActive ? 'active bg-primary text-white' : 'text-dark'}`}>
-              {icon}
-              <span className="ms-3">{children}</span>
-              {isActive && <ChevronRight className="ms-auto" size={16} />}
-            </a>
-          </Link>
-        );
-      };
+  return (
+    <Link href={href} className={`nav-link py-2 px-3 mb-1 rounded d-flex align-items-center ${isActive ? 'active bg-primary text-white' : 'text-dark'}`}>
+      {icon}
+      <span className="ms-3">{children}</span>
+      {isActive && <ChevronRight className="ms-auto" size={16} />}
+    </Link>
+  );
+};
         
 return (
     <>

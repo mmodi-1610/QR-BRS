@@ -7,7 +7,7 @@ const ItemSchema = new mongoose.Schema({
   spice: String,
   price: String,
   description: String,
-  // Optionally add photo URL if you implement image upload
+  photo: String,
 });
 
 const MenuSchema = new mongoose.Schema({
