@@ -1,15 +1,16 @@
-'use client'
+"use client";
 import { useState, useEffect } from "react";
 import { CalendarHeart, Menu } from "lucide-react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import Link from 'next/link';
+import Link from "next/link";
 import { Home, Calendar, PlusCircle, Edit, ChevronRight } from "lucide-react";
-
-
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 function Sidebar() {
   const [username, setUsername] = useState("");
-
+  const router = useRouter();
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("bootstrap/dist/js/bootstrap.bundle.min.js");
@@ -18,8 +19,20 @@ function Sidebar() {
   }, []);
 
 
+    const handleLogout = () => {
+    Cookies.remove("token");
+    localStorage.removeItem("username");
+    router.push("/login");
+  };
+
+
   const NavItem = ({ href, icon, children, isActive }) => (
-    <Link href={href} className={`nav-link py-2 px-3 mb-1 rounded d-flex align-items-center ${isActive ? 'active bg-primary text-white' : 'text-dark'}`}>
+    <Link
+      href={href}
+      className={`nav-link py-2 px-3 mb-1 rounded d-flex align-items-center ${
+        isActive ? "active bg-primary text-white" : "text-dark"
+      }`}
+    >
       {icon}
       <span className="ms-3">{children}</span>
       {isActive && <ChevronRight className="ms-auto" size={16} />}
@@ -28,8 +41,22 @@ function Sidebar() {
 
   return (
     <>
-      <button className="btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions"><Menu size={20}/></button>
-      <div className="offcanvas offcanvas-start" data-bs-scroll="true" tabIndex="-1" id="offcanvasWithBothOptions" aria-labelledby="offcanvasWithBothOptionsLabel">
+      <button
+        className="btn"
+        type="button"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#offcanvasWithBothOptions"
+        aria-controls="offcanvasWithBothOptions"
+      >
+        <Menu size={20} />
+      </button>
+      <div
+        className="offcanvas offcanvas-start"
+        data-bs-scroll="true"
+        tabIndex="-1"
+        id="offcanvasWithBothOptions"
+        aria-labelledby="offcanvasWithBothOptionsLabel"
+      >
         <div className="offcanvas-header">
           <div className="h-100 d-flex flex-column">
             <div className="p-3 border-bottom">
@@ -42,22 +69,43 @@ function Sidebar() {
               </div>
             </div>
           </div>
-          <button type="button" className="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          <button
+            type="button"
+            className="btn-close"
+            data-bs-dismiss="offcanvas"
+            aria-label="Close"
+          ></button>
         </div>
         <div className="offcanvas-body">
           <div className="p-3 flex-grow-1">
-            <p className="text-uppercase text-muted small fw-bold mb-2">Main Menu</p>
+            <p className="text-uppercase text-muted small fw-bold mb-2">
+              Main Menu
+            </p>
             <nav className="nav flex-column">
-              <NavItem href="/adminDashboard" icon={<Home size={18} />}>Dashboard</NavItem>
-              <NavItem href="/menuBuilder" icon={<PlusCircle size={18} />}>Menu Builder</NavItem>
-              <NavItem href="/QRGenerator" icon={<Edit size={18} />}>QR Generator</NavItem>
-              <NavItem href="/orderManagement" icon={<Calendar size={18} />}>Order Management</NavItem>
+              <NavItem href="/adminDashboard" icon={<Home size={18} />}>
+                Dashboard
+              </NavItem>
+              <NavItem href="/menuBuilder" icon={<PlusCircle size={18} />}>
+                Menu Builder
+              </NavItem>
+              <NavItem href="/QRGenerator" icon={<Edit size={18} />}>
+                QR Generator
+              </NavItem>
+              <NavItem href="/orderManagement" icon={<Calendar size={18} />}>
+                Order Management
+              </NavItem>
+              <NavItem href="/orderHistory" icon=
+                {<Calendar size={18}/>}>
+                  Order History
+              </NavItem>
             </nav>
           </div>
           <div className="p-3 border-top">
             <div className="d-flex align-items-center">
-              <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                   style={{ width: '32px', height: '32px' }}>
+              <div
+                className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
+                style={{ width: "32px", height: "32px" }}
+              >
                 {username ? username[0].toUpperCase() : "U"}
               </div>
               <div className="ms-3">
@@ -65,6 +113,9 @@ function Sidebar() {
                 <p className="mb-0 text-muted small">Administrator</p>
               </div>
             </div>
+            <button className="btn btn-outline-danger w-100" onClick={handleLogout}>
+          Logout
+        </button>
           </div>
         </div>
       </div>
