@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import axios from "axios";
+import { Eye, EyeOff } from "react-feather"; // Import icons
 
 function LoginForm() {
   const router = useRouter();
@@ -18,6 +19,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false); // State for password visibility
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -173,15 +175,13 @@ function LoginForm() {
       </div>
 
       {/* Password Field */}
-      <div className="form-floating mb-3">
+      <div className="form-floating mb-3 position-relative">
         <input
-          type="password"
+          type={passwordVisible ? "text" : "password"} // Toggle between password and text type
           className={`form-control ${errors.password ? "is-invalid" : ""}`}
           id="password"
           name="password"
-          placeholder={
-            formData.role === "admin" ? "Admin Password" : "Kitchen Password"
-          }
+          placeholder={formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
           value={formData.password}
           onChange={handleChange}
           disabled={isLoading}
@@ -193,6 +193,16 @@ function LoginForm() {
         {errors.password && (
           <div className="invalid-feedback">{errors.password}</div>
         )}
+        
+        {/* Eye Icon to Toggle Password Visibility */}
+        <div
+          className="position-absolute"
+          style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+          onClick={() => setPasswordVisible(!passwordVisible)}
+          role="button"
+        >
+          {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+        </div>
       </div>
 
       {/* Submit Button */}

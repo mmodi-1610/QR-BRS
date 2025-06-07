@@ -1,45 +1,99 @@
+"use client";
 import { useState } from "react";
-import {useRouter} from "next/navigation";
-// import { apiRequest } from "../lib/auth";
-import axios from "axios";
+import { Eye, EyeOff } from "react-feather";
+
+const PasswordInput = ({
+  label,
+  name,
+  placeholder,
+  value,
+  error,
+  required = false,
+  onChange,
+  showPassword,
+  toggleShowPassword,
+  disabled = false,
+}) => (
+  <div className="mb-3 relative">
+    <label htmlFor={name} className="block mb-1 text-xs font-medium">
+      {label}
+    </label>
+    <input
+      id={name}
+      type={showPassword[name] ? "text" : "password"}
+      name={name}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      required={required}
+      autoComplete="off"
+      disabled={disabled}
+      className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
+        error ? "border-red-500" : "border-gray-300"
+      } pr-8`}
+    />
+    <button
+      type="button"
+      onClick={() => toggleShowPassword(name)}
+      className="absolute right-2 top-1/7 transform translate-y-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+      aria-label={showPassword[name] ? "Hide password" : "Show password"}
+      tabIndex={0}
+      style={{ lineHeight: 0 }}
+    >
+      {showPassword[name] ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+  </div>
+);
+
 function RegisterForm({ onRegistered }) {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     adminPassword: "",
     kitchenPassword: "",
     confirmAdminPassword: "",
-    confirmKitchenPassword: ""
+    confirmKitchenPassword: "",
   });
-  
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
 
+  const [showPassword, setShowPassword] = useState({
+    adminPassword: false,
+    confirmAdminPassword: false,
+    kitchenPassword: false,
+    confirmKitchenPassword: false,
+  });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Clear validation errors on input change
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
     if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ""
-      });
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
     }
-    
-    // Clear general error message
     if (showError) {
       setShowError(false);
     }
   };
 
-const validateForm = () => {
+  const handleTogglePassword = (field) => {
+    setShowPassword((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
+  const validateForm = () => {
     const newErrors = {};
 
     if (!formData.username.trim()) {
@@ -71,31 +125,31 @@ const validateForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
-    setIsLoading(false);
-    
-    
-    
+
+    setIsLoading(true);
+
     try {
-      // Call register API
-  await axios.post("/api/user/register", {
-    username: formData.username,
-    email: formData.email,
-    adminPassword: formData.adminPassword,
-    kitchenPassword: formData.kitchenPassword
-  });
-      
-      // Registration successful
+      await fetch("/api/user/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          adminPassword: formData.adminPassword,
+          kitchenPassword: formData.kitchenPassword,
+        }),
+      });
+
       alert("Registration successful! You can now log in.");
       onRegistered();
-      
     } catch (error) {
       setErrorMessage(error.message || "Registration failed. Please try again.");
       setShowError(true);
@@ -105,143 +159,127 @@ const validateForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Error Alert */}
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto p-1">
+
       {showError && (
-        <div className="alert alert-danger" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+        <div
+          className="mb-4 p-2 bg-red-100 text-red-700 rounded-md"
+          role="alert"
+          aria-live="assertive"
+        >
           {errorMessage}
         </div>
       )}
-      
-      {/* Username Field */}
-      <div className="form-floating mb-3">
+
+      {/* Username */}
+      <div className="mb-3">
+        <label htmlFor="username" className="block mb-1 text-xs font-medium">
+          Username
+        </label>
         <input
-          type="text"
-          className={`form-control ${errors.username ? "is-invalid" : ""}`}
-          id="reg-username"
+          id="username"
           name="username"
-          placeholder="Username"
+          type="text"
+          placeholder="Enter username"
           value={formData.username}
           onChange={handleChange}
-          disabled={isLoading}
           required
+          disabled={isLoading}
+          className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
+            errors.username ? "border-red-500" : "border-gray-300"
+          }`}
         />
-        <label htmlFor="reg-username">Username</label>
         {errors.username && (
-          <div className="invalid-feedback">{errors.username}</div>
+          <p className="text-red-500 text-xs mt-1">{errors.username}</p>
         )}
       </div>
-      
-      {/* Email Field */}
-      <div className="form-floating mb-3">
+
+      {/* Email */}
+      <div className="mb-3">
+        <label htmlFor="email" className="block mb-1 text-xs font-medium">
+          Email Address
+        </label>
         <input
-          type="email"
-          className={`form-control ${errors.email ? "is-invalid" : ""}`}
-          id="reg-email"
+          id="email"
           name="email"
-          placeholder="Email Address"
+          type="email"
+          placeholder="Enter email"
           value={formData.email}
           onChange={handleChange}
-          disabled={isLoading}
           required
+          disabled={isLoading}
+          className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
+            errors.email ? "border-red-500" : "border-gray-300"
+          }`}
         />
-        <label htmlFor="reg-email">Email Address</label>
         {errors.email && (
-          <div className="invalid-feedback">{errors.email}</div>
+          <p className="text-red-500 text-xs mt-1">{errors.email}</p>
         )}
       </div>
-      
-      {/* Admin Password Field */}
-      <div className="form-floating mb-3">
-        <input
-          type="password"
-          className={`form-control ${errors.adminPassword ? "is-invalid" : ""}`}
-          id="adminPassword"
-          name="adminPassword"
-          placeholder="Admin Password"
-          value={formData.adminPassword}
-          onChange={handleChange}
-          disabled={isLoading}
-          required
-        />
-        <label htmlFor="adminPassword">Admin Password</label>
-        {errors.adminPassword && (
-          <div className="invalid-feedback">{errors.adminPassword}</div>
-        )}
-      </div>
-      {/* Confirm Admin Password Field */}
-      <div className="form-floating mb-3">
-        <input
-          type="password"
-          className={`form-control ${errors.confirmAdminPassword ? "is-invalid" : ""}`}
-          id="confirmAdminPassword"
-          name="confirmAdminPassword"
-          placeholder="Confirm Admin Password"
-          value={formData.confirmAdminPassword}
-          onChange={handleChange}
-          disabled={isLoading}
-          required
-        />
-        <label htmlFor="confirmAdminPassword">Confirm Admin Password</label>
-        {errors.confirmAdminPassword && (
-          <div className="invalid-feedback">{errors.confirmAdminPassword}</div>
-        )}
-      </div>
-      {/* Kitchen Password Field */}
-      <div className="form-floating mb-3">
-        <input
-          type="password"
-          className={`form-control ${errors.kitchenPassword ? "is-invalid" : ""}`}
-          id="kitchenPassword"
-          name="kitchenPassword"
-          placeholder="Kitchen Password"
-          value={formData.kitchenPassword}
-          onChange={handleChange}
-          disabled={isLoading}
-          required
-        />
-        <label htmlFor="kitchenPassword">Kitchen Password</label>
-        {errors.kitchenPassword && (
-          <div className="invalid-feedback">{errors.kitchenPassword}</div>
-        )}
-      </div>
-      {/* Confirm Kitchen Password Field */}
-      <div className="form-floating mb-4">
-        <input
-          type="password"
-          className={`form-control ${errors.confirmKitchenPassword ? "is-invalid" : ""}`}
-          id="confirmKitchenPassword"
-          name="confirmKitchenPassword"
-          placeholder="Confirm Kitchen Password"
-          value={formData.confirmKitchenPassword}
-          onChange={handleChange}
-          disabled={isLoading}
-          required
-        />
-        <label htmlFor="confirmKitchenPassword">Confirm Kitchen Password</label>
-        {errors.confirmKitchenPassword && (
-          <div className="invalid-feedback">{errors.confirmKitchenPassword}</div>
-        )}
-      </div>
-      
-      {/* Submit Button */}
-      <div className="d-grid gap-2">
-        <button
-          type="submit"
-          className="btn btn-primary btn-lg"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-              Registering...
-            </>
-          ) : (
-            "Register"
-          )}
-        </button>
-      </div>
+
+      {/* Admin Password */}
+      <PasswordInput
+        label="Admin Password"
+        name="adminPassword"
+        placeholder="Enter admin password"
+        value={formData.adminPassword}
+        error={errors.adminPassword}
+        required
+        onChange={handleChange}
+        showPassword={showPassword}
+        toggleShowPassword={handleTogglePassword}
+        disabled={isLoading}
+      />
+
+      {/* Confirm Admin Password */}
+      <PasswordInput
+        label="Confirm Admin Password"
+        name="confirmAdminPassword"
+        placeholder="Confirm admin password"
+        value={formData.confirmAdminPassword}
+        error={errors.confirmAdminPassword}
+        required
+        onChange={handleChange}
+        showPassword={showPassword}
+        toggleShowPassword={handleTogglePassword}
+        disabled={isLoading}
+      />
+
+      {/* Kitchen Password */}
+      <PasswordInput
+        label="Kitchen Password"
+        name="kitchenPassword"
+        placeholder="Enter kitchen password"
+        value={formData.kitchenPassword}
+        error={errors.kitchenPassword}
+        required
+        onChange={handleChange}
+        showPassword={showPassword}
+        toggleShowPassword={handleTogglePassword}
+        disabled={isLoading}
+      />
+
+      {/* Confirm Kitchen Password */}
+      <PasswordInput
+        label="Confirm Kitchen Password"
+        name="confirmKitchenPassword"
+        placeholder="Confirm kitchen password"
+        value={formData.confirmKitchenPassword}
+        error={errors.confirmKitchenPassword}
+        required
+        onChange={handleChange}
+        showPassword={showPassword}
+        toggleShowPassword={handleTogglePassword}
+        disabled={isLoading}
+      />
+
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition disabled:opacity-50"
+      >
+        {isLoading ? "Registering..." : "Register"}
+      </button>
     </form>
   );
 }
