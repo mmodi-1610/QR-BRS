@@ -168,10 +168,11 @@ export default function AdminDashboard() {
       {
         label: "Sales by Day",
         data: stats.salesByDay.map(d => d.value),
-        fill: false,
-        borderColor: "#007bff",
-        backgroundColor: "#007bff",
-        tension: 0.3,
+        fill: true,
+        borderColor: "#6366f1",
+        backgroundColor: "rgba(99,102,241,0.1)",
+        tension: 0.4,
+        pointBackgroundColor: "#6366f1",
       },
     ],
   };
@@ -182,7 +183,10 @@ export default function AdminDashboard() {
       {
         label: "Sales by Hour",
         data: stats.salesByHour.map(h => h.value),
-        backgroundColor: "#28a745",
+        backgroundColor: "rgba(16, 185, 129, .7)",
+        borderRadius: 8,
+        barPercentage: 0.7,
+        categoryPercentage: 0.7,
       },
     ],
   };
@@ -194,175 +198,216 @@ export default function AdminDashboard() {
         label: "Category Revenue",
         data: Object.values(stats.catMap),
         backgroundColor: [
-          "#007bff",
-          "#28a745",
-          "#ffc107",
-          "#dc3545",
-          "#6f42c1",
-          "#fd7e14",
+          "#6366f1",
+          "#10b981",
+          "#f59e42",
+          "#f43f5e",
+          "#a21caf",
+          "#fbbf24",
+          "#60a5fa",
+          "#f472b6",
         ],
+        borderWidth: 2,
+        borderColor: "#fff",
       },
     ],
   };
 
+  // Gradient header and animated card shadow classes
+  const glassCard = "bg-white/80 rounded-2xl shadow-xl backdrop-blur-lg border border-white/80 hover:shadow-2xl transition-shadow duration-300";
+
   return (
-    <div className="d-flex" style={{ minHeight: "100vh" }}>
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-fuchsia-50 to-indigo-100">
       <Sidebar />
-      <main className="flex-grow-1 p-4 bg-light">
-        <h1 className="mb-4">ADMIN DASHBOARD</h1>
+      <main className="flex-1 p-6 md:p-10">
+        <div className="mb-10">
+          <h1 className="text-4xl font-extrabold text-gray-800 tracking-tight mb-2 bg-gradient-to-r from-indigo-500 via-fuchsia-600 to-indigo-400 bg-clip-text text-transparent drop-shadow-lg">Admin Dashboard</h1>
+          <p className="text-lg text-gray-500">Monitor and analyze your restaurant's performance at a glance.</p>
+        </div>
         {/* Summary KPIs */}
-        <div className="row mb-4">
-          <div className="col-md-3 mb-3">
-            <div className="card text-white bg-success h-100">
-              <div className="card-body">
-                <h6 className="card-title">Total Sales Today</h6>
-                <h3 className="card-text">₹{stats.todaySales}</h3>
-                <div className="small">This Week: ₹{stats.weekSales} | This Month: ₹{stats.monthSales}</div>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <div className={`${glassCard} p-6 flex flex-col items-start`}>
+            <span className="bg-gradient-to-r from-green-400 to-green-600 text-white px-3 py-1 rounded-full text-sm font-semibold mb-4 shadow">Today</span>
+            <h6 className="uppercase text-xs font-bold opacity-80 tracking-wider">
+              Total Sales
+            </h6>
+            <h3 className="text-3xl font-extrabold mt-2 mb-1 text-green-700 tracking-tight drop-shadow">₹{stats.todaySales}</h3>
+            <div className="text-xs text-gray-500 mt-1">
+              <span className="mr-2">Week: <span className="font-bold">₹{stats.weekSales}</span></span>
+              <span>Month: <span className="font-bold">₹{stats.monthSales}</span></span>
             </div>
           </div>
-          <div className="col-md-3 mb-3">
-            <div className="card text-white bg-primary h-100">
-              <div className="card-body">
-                <h6 className="card-title">Orders Placed</h6>
-                <h3 className="card-text">{stats.numOrders}</h3>
-                <div className="small">Avg. Order Value: ₹{stats.avgOrderValue}</div>
-              </div>
+          <div className={`${glassCard} p-6 flex flex-col items-start`}>
+            <span className="bg-gradient-to-r from-blue-400 to-indigo-500 text-white px-3 py-1 rounded-full text-sm font-semibold mb-4 shadow">Orders</span>
+            <h6 className="uppercase text-xs font-bold opacity-80 tracking-wider">
+              Orders Placed
+            </h6>
+            <h3 className="text-3xl font-extrabold mt-2 mb-1 text-blue-700 tracking-tight drop-shadow">{stats.numOrders}</h3>
+            <div className="text-xs text-gray-500 mt-1">
+              Avg. Order Value: <span className="font-bold">₹{stats.avgOrderValue}</span>
             </div>
           </div>
-          <div className="col-md-3 mb-3">
-            <div className="card text-white bg-info h-100">
-              <div className="card-body">
-                <h6 className="card-title">Top-Selling Item</h6>
-                <h3 className="card-text">{stats.topItem ? `${stats.topItem.name} (${stats.topItem.qty})` : "N/A"}</h3>
-                <div className="small">Least: {stats.leastItems.map(i => i.name).join(", ") || "N/A"}</div>
-              </div>
+          <div className={`${glassCard} p-6 flex flex-col items-start`}>
+            <span className="bg-gradient-to-r from-fuchsia-400 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-semibold mb-4 shadow">Top</span>
+            <h6 className="uppercase text-xs font-bold opacity-80 tracking-wider">
+              Top-Selling Item
+            </h6>
+            <h3 className="text-3xl font-extrabold mt-2 mb-1 text-pink-700 tracking-tight drop-shadow">
+              {stats.topItem ? `${stats.topItem.name} (${stats.topItem.qty})` : "N/A"}
+            </h3>
+            <div className="text-xs text-gray-500 mt-1">
+              Least: <span className="font-bold">{stats.leastItems.map(i => i.name).join(", ") || "N/A"}</span>
             </div>
           </div>
-          <div className="col-md-3 mb-3">
-            <div className="card text-white bg-warning h-100">
-              <div className="card-body">
-                <h6 className="card-title">Active Tables</h6>
-                <h3 className="card-text">{stats.activeTables}</h3>
-                <div className="small">Peak Hour: {stats.peakHour || "N/A"}</div>
-              </div>
+          <div className={`${glassCard} p-6 flex flex-col items-start`}>
+            <span className="bg-gradient-to-r from-yellow-300 to-orange-400 text-gray-900 px-3 py-1 rounded-full text-sm font-semibold mb-4 shadow">Activity</span>
+            <h6 className="uppercase text-xs font-bold opacity-80 tracking-wider">
+              Active Tables
+            </h6>
+            <h3 className="text-3xl font-extrabold mt-2 mb-1 text-yellow-600 tracking-tight drop-shadow">{stats.activeTables}</h3>
+            <div className="text-xs text-gray-500 mt-1">
+              Peak Hour: <span className="font-bold">{stats.peakHour || "N/A"}</span>
             </div>
           </div>
         </div>
 
         {/* Revenue Breakdown & Order Metrics */}
-        <div className="row mb-4">
-          <div className="col-md-6 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Sales by Day</h6>
-                <Line data={lineData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className={`${glassCard} p-6`}>
+            <h6 className="text-lg font-bold text-indigo-700 mb-4 flex items-center">
+              <span className="mr-2">📈</span> Sales by Day
+            </h6>
+            <Line data={lineData} options={{
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { mode: "index", intersect: false },
+              },
+              scales: { x: { grid: { color: "#f3f4f6" } }, y: { grid: { color: "#f3f4f6" } } },
+            }} />
           </div>
-          <div className="col-md-6 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Sales by Hour</h6>
-                <Bar data={barData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
-              </div>
-            </div>
+          <div className={`${glassCard} p-6`}>
+            <h6 className="text-lg font-bold text-emerald-700 mb-4 flex items-center">
+              <span className="mr-2">⏰</span> Sales by Hour
+            </h6>
+            <Bar data={barData} options={{
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { mode: "index", intersect: false },
+              },
+              scales: { x: { grid: { color: "#f3f4f6" } }, y: { grid: { color: "#f3f4f6" } } },
+            }} />
           </div>
         </div>
-        <div className="row mb-4">
-          <div className="col-md-6 mb-3">
-            <div className="card h-100">
-              <div className="card-body" style={{height:'500px', width:'500px'}}>
-                <h6 className="card-title">Category-wise Revenue</h6>
-                <Pie data={pieData} options={{ responsive: true, maintainAspectRatio:false}} />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className={`${glassCard} p-6 flex flex-col items-center`}>
+            <h6 className="text-lg font-bold text-indigo-700 mb-4 flex items-center">
+              <span className="mr-2">🧾</span> Category-wise Revenue
+            </h6>
+            <div className="w-full h-[320px] md:w-[400px] md:h-[400px] flex items-center justify-center">
+              <Pie data={pieData} options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "bottom",
+                    labels: { color: "#374151", font: { size: 14 } },
+                  },
+                  tooltip: { enabled: true, backgroundColor: "#fff", titleColor: "#333", bodyColor: "#333" },
+                }
+              }} />
             </div>
           </div>
-          <div className="col-md-6 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Top Combos</h6>
-                <ul className="mb-0 ps-3">
-                  {stats.topCombos.length === 0 ? (
-                    <li className="text-muted">No data</li>
-                  ) : (
-                    stats.topCombos.map((combo, idx) => (
-                      <li key={idx}>
-                        {combo.combo} <span className="fw-bold">({combo.count})</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            </div>
+          <div className={`${glassCard} p-6`}>
+            <h6 className="text-lg font-bold text-fuchsia-700 mb-4 flex items-center">
+              <span className="mr-2">🍱</span> Top Combos
+            </h6>
+            <ul className="list-inside space-y-2 text-gray-700 font-medium">
+              {stats.topCombos.length === 0 ? (
+                <li className="text-gray-400">No data</li>
+              ) : (
+                stats.topCombos.map((combo, idx) => (
+                  <li key={idx} className="flex items-center">
+                    <span className="mr-2 rounded bg-fuchsia-200 text-fuchsia-700 px-2 py-0.5 font-semibold">{combo.combo}</span>
+                    <span className="ml-auto font-bold text-fuchsia-700">({combo.count})</span>
+                  </li>
+                ))
+              )}
+            </ul>
           </div>
         </div>
 
         {/* Advanced Metrics */}
-        <div className="row mb-4">
-          <div className="col-md-4 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Average Preparation Time</h6>
-                <h3 className="card-text">{stats.avgPrepTime} min</h3>
-                <div className="small">Avg. Order Size: {stats.avgOrderSize}</div>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className={`${glassCard} p-6 flex flex-col justify-between`}>
+            <div>
+              <h6 className="text-lg font-bold text-emerald-700 mb-4 flex items-center">
+                <span className="mr-2">⏳</span>Average Preparation Time
+              </h6>
+              <h3 className="text-3xl font-extrabold mt-2 mb-1 text-emerald-700 tracking-tight drop-shadow">{stats.avgPrepTime} min</h3>
+              <div className="text-xs text-gray-500 mt-1">Avg. Order Size: <span className="font-bold">{stats.avgOrderSize}</span></div>
             </div>
           </div>
-          <div className="col-md-4 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Top-Selling Items</h6>
-                <ul className="mb-0 ps-3">
-                  {stats.itemAnalytics.slice(0, 3).map((item, idx) => (
-                    <li key={idx}>{item.name} ({item.qty})</li>
-                  ))}
-                </ul>
-                <h6 className="card-title mt-3">Least-Selling Items</h6>
-                <ul className="mb-0 ps-3">
-                  {stats.itemAnalytics.slice(-3).map((item, idx) => (
-                    <li key={idx}>{item.name} ({item.qty})</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+          <div className={`${glassCard} p-6`}>
+            <h6 className="text-lg font-bold text-indigo-700 mb-2">Top-Selling Items</h6>
+            <ul className="list-inside space-y-1 text-gray-700 font-medium">
+              {stats.itemAnalytics.slice(0, 3).map((item, idx) => (
+                <li key={idx}>{item.name} <span className="text-xs font-bold text-indigo-600">({item.qty})</span></li>
+              ))}
+            </ul>
+            <h6 className="text-lg font-bold text-pink-700 mt-6 mb-2">Least-Selling Items</h6>
+            <ul className="list-inside space-y-1 text-gray-700 font-medium">
+              {stats.itemAnalytics.slice(-3).map((item, idx) => (
+                <li key={idx}>{item.name} <span className="text-xs font-bold text-pink-600">({item.qty})</span></li>
+              ))}
+            </ul>
           </div>
-          <div className="col-md-4 mb-3">
-            <div className="card h-100">
-              <div className="card-body">
-                <h6 className="card-title">Item-wise Analytics</h6>
-                <div style={{ maxHeight: 120, overflowY: "auto" }}>
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Category</th>
-                        <th>Sold</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.itemAnalytics.map((item, idx) => (
-                        <tr key={idx}>
-                          <td>{item.name}</td>
-                          <td>{item.category}</td>
-                          <td>{item.qty}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          <div className={`${glassCard} p-6`}>
+            <h6 className="text-lg font-bold text-blue-700 mb-4">Item-wise Analytics</h6>
+            <div className="overflow-y-auto max-h-44 custom-scrollbar">
+              <table className="min-w-full text-sm text-left border-separate border-spacing-y-1">
+                <thead>
+                  <tr>
+                    <th className="font-bold py-1 px-2 bg-indigo-50 rounded-l">Item</th>
+                    <th className="font-bold py-1 px-2 bg-indigo-50">Category</th>
+                    <th className="font-bold py-1 px-2 bg-indigo-50 rounded-r">Sold</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.itemAnalytics.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-indigo-50 rounded-lg">
+                      <td className="py-1 px-2">{item.name}</td>
+                      <td className="py-1 px-2">{item.category}</td>
+                      <td className="py-1 px-2">{item.qty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-        <div className="card mb-3">
-          <div className="card-body">
-            <h5 className="card-title">Welcome, Admin!</h5>
-            <p className="card-text">
-              Use the sidebar to navigate between different admin features.
+        <div className={`${glassCard} p-7 mb-4 flex items-center`}>
+          <div>
+            <h5 className="text-2xl font-extrabold text-indigo-700 mb-1">Welcome, Admin! 👋</h5>
+            <p className="text-gray-700 leading-relaxed">
+              Use the sidebar to navigate between different admin features. <span className="text-indigo-500 font-semibold">Keep tracking your restaurant's growth!</span>
             </p>
           </div>
         </div>
+        {/* Custom Scrollbar for overflow-y */}
+        <style jsx>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c7d2fe;
+            border-radius: 3px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+          }
+        `}</style>
       </main>
     </div>
   );

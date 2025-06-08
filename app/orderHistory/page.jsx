@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/Sidebar"; // Tailwind + Framer Motion sidebar
 
 export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
@@ -8,10 +8,10 @@ export default function OrderHistory() {
 
   useEffect(() => {
     fetch("/api/order")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.orders) {
-          setOrders(data.orders.filter(order => order.status === "paid"));
+          setOrders(data.orders.filter((order) => order.status === "paid"));
         }
       });
   }, []);
@@ -25,77 +25,120 @@ export default function OrderHistory() {
   });
 
   return (
-    <div className="container py-4">
-      <Sidebar />
-      <h1 className="mb-4 fw-bold">Order History</h1>
-      <div className="mb-3 d-flex align-items-center">
-        <label className="me-2 fw-semibold">Sort by:</label>
-        <select
-          className="form-select w-auto"
-          value={sortOrder}
-          onChange={e => setSortOrder(e.target.value)}
-        >
-          <option value="latest">Latest First</option>
-          <option value="oldest">Oldest First</option>
-        </select>
-      </div>
-      <div className="row">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar with dynamic width, no fixed width here */}
+      <aside className="flex-shrink-0 bg-white border-r border-gray-200 shadow-sm">
+        <Sidebar />
+      </aside>
+
+      {/* Main Content fills remaining space */}
+      <main className="flex-1 p-8 overflow-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <h1 className="text-3xl font-extrabold text-gray-900">Order History</h1>
+          <div className="flex items-center space-x-3">
+            <label
+              htmlFor="sortOrder"
+              className="text-gray-700 font-semibold cursor-pointer select-none"
+            >
+              Sort by:
+            </label>
+            <select
+              id="sortOrder"
+              className="border border-gray-300 rounded-md px-4 py-2 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+            >
+              <option value="latest">Latest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+        </div>
+
+        {/* No Orders Message */}
         {sortedOrders.length === 0 ? (
-          <div className="col-12 text-center text-muted py-5">
-            <h4>No paid orders yet.</h4>
+          <div className="flex justify-center items-center py-20">
+            <p className="text-lg text-gray-500">No paid orders yet.</p>
           </div>
         ) : (
-          sortedOrders.map(order => (
-            <div className="col-md-6 col-lg-4 mb-4" key={order._id}>
-              <div className="card shadow border-0 h-100">
-                <div className="card-header bg-success text-white">
-                  <h5 className="mb-0">Table: {order.table}</h5>
-                </div>
-                <div className="card-body">
-                  <div className="mb-2">
-                    <span className="fw-semibold">Order ID: {order._id}</span>
-                  </div>
-                  <div className="mb-2">
-                    <span className="badge bg-success">Paid</span>
-                  </div>
-                  <div className="mb-2 text-muted small">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {sortedOrders.map((order) => (
+              <article
+                key={order._id}
+                className="bg-white rounded-lg shadow-md flex flex-col h-full border border-gray-200 hover:shadow-lg transition-shadow"
+              >
+                {/* Header */}
+                <header className="bg-green-600 text-white rounded-t-lg px-5 py-3">
+                  <h2 className="text-xl font-semibold">Table: {order.table}</h2>
+                </header>
+
+                {/* Body */}
+                <section className="flex-grow px-5 py-4 flex flex-col">
+                  <p className="text-sm font-semibold text-gray-700 mb-2 break-words">
+                    <span className="text-gray-500 font-normal">Order ID:</span>{" "}
+                    {order._id}
+                  </p>
+
+                  <span className="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold w-max mb-3">
+                    Paid
+                  </span>
+
+                  <time
+                    className="text-xs text-gray-500 mb-4"
+                    dateTime={order.createdAt}
+                  >
                     {order.createdAt
                       ? new Date(order.createdAt).toLocaleString()
                       : ""}
-                  </div>
-                  <table className="table table-sm mb-2">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th>Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.items.map((item, idx) => (
-                        <tr key={idx}>
-                          <td>{item.name}</td>
-                          <td>{item.quantity}</td>
-                          <td>₹{item.price}</td>
-                          <td>₹{item.price * item.quantity}</td>
+                  </time>
+
+                  {/* Items Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-sm text-gray-700">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border px-3 py-2 text-left">Item</th>
+                          <th className="border px-3 py-2 text-center">Qty</th>
+                          <th className="border px-3 py-2 text-right">Price</th>
+                          <th className="border px-3 py-2 text-right">Subtotal</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="fw-bold">
-                    Total: ₹
-                    {order.items.reduce(
-                      (sum, item) => sum + item.price * item.quantity,
-                      0
-                    )}
+                      </thead>
+                      <tbody>
+                        {order.items.map((item, idx) => (
+                          <tr
+                            key={idx}
+                            className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                          >
+                            <td className="border px-3 py-2">{item.name}</td>
+                            <td className="border px-3 py-2 text-center">
+                              {item.quantity}
+                            </td>
+                            <td className="border px-3 py-2 text-right">
+                              ₹{item.price}
+                            </td>
+                            <td className="border px-3 py-2 text-right">
+                              ₹{item.price * item.quantity}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
-              </div>
-            </div>
-          ))
+                </section>
+
+                {/* Footer */}
+                <footer className="px-5 py-4 border-t border-gray-200 text-right text-lg font-bold text-gray-900">
+                  Total: ₹
+                  {order.items.reduce(
+                    (sum, item) => sum + item.price * item.quantity,
+                    0
+                  )}
+                </footer>
+              </article>
+            ))}
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Printer, CheckCircle, PlusCircle } from "lucide-react";
+import { Printer, CheckCircle, PlusCircle, X } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
@@ -20,434 +20,408 @@ export default function OrderManagement() {
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
   const [selectedTable, setSelectedTable] = useState("");
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectedItems, setSelectedItems] = useState({});
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const restaurantId=getUserIdFromToken();
+  const restaurantId = getUserIdFromToken();
 
-  // Fetch orders and menu on mount
   useEffect(() => {
-    fetch("/api/order")
-      .then(res => res.json())
-      .then(data => setOrders(data.orders || []));
-    fetch("/api/menu")
-      .then(res => res.json())
-      .then(data => setMenu(data.menu?.items || []));
+    const fetchData = async () => {
+      const [orderRes, menuRes] = await Promise.all([fetch("/api/order"), fetch("/api/menu")]);
+      const orderData = await orderRes.json();
+      const menuData = await menuRes.json();
+      setOrders(orderData.orders || []);
+      setMenu(menuData.menu?.items || []);
+    };
+    fetchData();
   }, []);
 
-  // Place order handler
-  const handlePlaceOrder = async (table, items) => {
-  if (!table || !items || items.length === 0) {
-    alert("Please select a table and at least one item.");
-    return;
-  }
-  await fetch("/api/order", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      restaurantId: restaurantId, // backend will use token
-      table,
-      items,
-    }),
-  });
-  setSelectedTable("");
-  setSelectedItems({});
-  setShowOrderForm(false);
-  // Refresh orders
-  fetch("/api/order")
-    .then(res => res.json())
-    .then(data => setOrders(data.orders || []));
-};
+  const unpaidOrdersByTable = orders
+    .filter((o) => o.status !== "paid")
+    .reduce((acc, o) => {
+      acc[o.table] = acc[o.table] || [];
+      acc[o.table].push(o);
+      return acc;
+    }, {});
 
-  // Add/remove item for new order
-  const handleItemChange = (item, delta) => {
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.name === item.name);
-      if (existing) {
-        const updated = prev.map(i =>
-          i.name === item.name
-            ? { ...i, quantity: Math.max(1, i.quantity + delta) }
-            : i
-        );
-        return updated.filter(i => i.quantity > 0);
-      }
-      return [...prev, { ...item, quantity: 1 }];
+  const handlePlaceOrder = async (table, items) => {
+    if (!table || !items?.length) return alert("Select table and items");
+
+    await fetch("/api/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurantId, table, items }),
     });
+
+    setSelectedTable("");
+    setSelectedItems({});
+    setShowOrderForm(false);
+    const res = await fetch("/api/order");
+    const data = await res.json();
+    setOrders(data.orders || []);
   };
 
-  // Print bill for all unpaid orders of a table
+  const handleMarkAsPaid = async (table, unpaidOrders) => {
+    const ids = unpaidOrders.map((o) => o._id);
+    await fetch("/api/order", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, status: "paid" }),
+    });
+    setOrders((prev) => prev.map((o) => (ids.includes(o._id) ? { ...o, status: "paid" } : o)));
+  };
+
   const handlePrint = (table, unpaidOrders) => {
-    const allItems = unpaidOrders.flatMap(order => order.items);
+    const allItems = unpaidOrders.flatMap((o) => o.items);
     const combinedItems = Object.values(
-      allItems.reduce((acc, item) => {
-        if (!acc[item.name]) {
-          acc[item.name] = { ...item };
-        } else {
-          acc[item.name].quantity += item.quantity;
-        }
+      allItems.reduce((acc, i) => {
+        acc[i.name] = acc[i.name]
+          ? { ...acc[i.name], quantity: acc[i.name].quantity + i.quantity }
+          : { ...i };
         return acc;
       }, {})
     );
-    const total = combinedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = combinedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
     const printWindow = window.open("", "_blank");
     printWindow.document.write(`
       <html>
-        <head>
-          <title>Bill - Table ${table}</title>
-          <style>
-            body { font-family: Arial; padding: 20px; }
-            h2 { margin-bottom: 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background: #f8f8f8; }
-            .total { font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h2>Bill - Table ${table}</h2>
-          <table>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Subtotal</th>
-            </tr>
+      <head><title>Bill - Table ${table}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f9fafb; }
+        .total { font-weight: bold; }
+      </style></head>
+      <body>
+        <h2>Bill - Table ${table}</h2>
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr>
+          </thead>
+          <tbody>
             ${combinedItems
               .map(
-                (item) => `
+                (i) => `
               <tr>
-                <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>₹${item.price}</td>
-                <td>₹${item.price * item.quantity}</td>
-              </tr>
-            `
+                <td>${i.name}</td>
+                <td>${i.quantity}</td>
+                <td>₹${i.price}</td>
+                <td>₹${i.price * i.quantity}</td>
+              </tr>`
               )
               .join("")}
             <tr>
               <td colspan="3" class="total">Total</td>
               <td class="total">₹${total}</td>
             </tr>
-          </table>
-          <p>Status: Unpaid</p>
-        </body>
-      </html>
+          </tbody>
+        </table>
+        <p>Status: Unpaid</p>
+      </body></html>
     `);
     printWindow.document.close();
     printWindow.print();
   };
 
-  // Mark all unpaid orders for a table as paid
-  const handleMarkAsPaid = async (table, unpaidOrders) => {
-    const ids = unpaidOrders.map(order => order._id);
-    await fetch("/api/order", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids, status: "paid" }),
-    });
-    setOrders(orders =>
-      orders.map(order =>
-        ids.includes(order._id) ? { ...order, status: "paid" } : order
-      )
-    );
-  };
+  // --- Modal for placing order ---
+  const renderOrderForm = () => {
+    const currentItem = selectedItems._currentItem || "";
+    const currentQty = selectedItems._currentQty || 1;
+    const list = selectedItems.list || [];
 
-  // Group unpaid orders by table
-  const unpaidOrdersByTable = orders
-    .filter(order => order.status !== "paid")
-    .reduce((acc, order) => {
-      acc[order.table] = acc[order.table] || [];
-      acc[order.table].push(order);
-      return acc;
-    }, {});
-
-  // --- UI ---
-  return (
-    <div className="container py-4">
-      <Sidebar />
-      <h1 className="mb-4 fw-bold">Order Management</h1>
-
-      {/* General Place Order Button */}
-      <div className="mb-4">
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setShowOrderForm(true);
-            setSelectedTable("");
-            setSelectedItems([]);
-          }}
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={() => setShowOrderForm(false)}
+      >
+        <div
+          className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 relative"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
         >
-          <PlusCircle className="me-2" /> Place Order
-        </button>
-      </div>
+          <button
+            aria-label="Close modal"
+            onClick={() => setShowOrderForm(false)}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-900 transition"
+          >
+            <X size={24} />
+          </button>
 
-      {showOrderForm && (
-  <div className="modal fade show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.3)" }}>
-    <div className="modal-dialog">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">Place New Order</h5>
-          <button type="button" className="btn-close" onClick={() => setShowOrderForm(false)}></button>
-        </div>
-        <div className="modal-body">
-          <div className="mb-3">
-            <label className="form-label">Table</label>
-            <input
-              type="text"
-              className="form-control"
-              value={selectedTable}
-              onChange={e => setSelectedTable(e.target.value)}
-              placeholder="Enter table number/name"
-            />
-          </div>
-          {/* Improved item selection */}
-          <div className="mb-3">
-            <label className="form-label">Select Item</label>
-            <div className="d-flex align-items-center">
-              <select
-                className="form-select me-2"
-                style={{ maxWidth: 200 }}
-                value={selectedItems._currentItem || ""}
-                onChange={e => {
-                  const itemName = e.target.value;
-                  setSelectedItems(prev => ({
-                    ...prev,
-                    _currentItem: itemName,
-                    _currentQty: 1,
-                  }));
-                }}
-              >
-                <option value="">Choose item...</option>
-                {menu.map((item, idx) => (
-                  <option key={idx} value={item.name}>
-                    {item.name} (₹{item.price})
-                  </option>
-                ))}
-              </select>
+          <h2 id="modal-title" className="text-2xl font-semibold mb-6 text-gray-900">
+            Place New Order
+          </h2>
+
+          {/* Table Input */}
+          <label className="block mb-2 font-medium text-gray-700">Table Name/Number</label>
+          <input
+            type="text"
+            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6"
+            placeholder="E.g. T1 or 12"
+            value={selectedTable}
+            onChange={(e) => setSelectedTable(e.target.value)}
+          />
+
+          {/* Item Selector */}
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <select
+              className="flex-grow min-w-[180px] border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={currentItem}
+              onChange={(e) =>
+                setSelectedItems((prev) => ({
+                  ...prev,
+                  _currentItem: e.target.value,
+                  _currentQty: 1,
+                }))
+              }
+            >
+              <option value="">Select Item...</option>
+              {menu.map((item, idx) => (
+                <option key={idx} value={item.name}>
+                  {item.name} (₹{item.price})
+                </option>
+              ))}
+            </select>
+
+            <div className="flex items-center space-x-3">
               <button
-                className="btn btn-outline-secondary"
-                type="button"
+                disabled={!currentItem}
                 onClick={() =>
-                  setSelectedItems(prev => ({
+                  setSelectedItems((prev) => ({
                     ...prev,
-                    _currentQty: Math.max(1, (prev._currentQty || 1) - 1),
+                    _currentQty: Math.max(1, currentQty - 1),
                   }))
                 }
-                disabled={!selectedItems._currentItem}
-              >-</button>
-              <span className="mx-2" style={{ minWidth: 24, textAlign: "center" }}>
-                {selectedItems._currentQty || 1}
-              </span>
+                className="disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-3 py-1 transition"
+              >
+                −
+              </button>
+              <span className="font-semibold text-lg min-w-[20px] text-center">{currentQty}</span>
               <button
-                className="btn btn-outline-secondary"
-                type="button"
+                disabled={!currentItem}
                 onClick={() =>
-                  setSelectedItems(prev => ({
+                  setSelectedItems((prev) => ({
                     ...prev,
-                    _currentQty: (prev._currentQty || 1) + 1,
+                    _currentQty: currentQty + 1,
                   }))
                 }
-                disabled={!selectedItems._currentItem}
-              >+</button>
-              <button
-                className="btn btn-success ms-3"
-                type="button"
-                disabled={!selectedItems._currentItem}
-                onClick={() => {
-                  const itemName = selectedItems._currentItem;
-                  const qty = selectedItems._currentQty || 1;
-                  const menuItem = menu.find(i => i.name === itemName);
-                  if (!menuItem) return;
-                  // Add or update item in order
-                  setSelectedItems(prev => {
-                    const filtered = (prev.list || []).filter(i => i.name !== itemName);
-                    return {
-                      ...prev,
-                      list: [
-                        ...filtered,
-                        { name: itemName, price: menuItem.price, quantity: qty },
-                      ],
-                      _currentItem: "",
-                      _currentQty: 1,
-                    };
-                  });
-                }}
+                className="disabled:opacity-50 disabled:cursor-not-allowed bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-3 py-1 transition"
               >
-                Add
+                +
               </button>
             </div>
+
+            <button
+              disabled={!currentItem}
+              onClick={() => {
+                const menuItem = menu.find((i) => i.name === currentItem);
+                if (!menuItem) return;
+                const filtered = list.filter((i) => i.name !== currentItem);
+                setSelectedItems({
+                  list: [...filtered, { name: currentItem, price: menuItem.price, quantity: currentQty }],
+                  _currentItem: "",
+                  _currentQty: 1,
+                });
+              }}
+              className="disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-700 text-white rounded px-4 py-2 font-semibold transition"
+            >
+              Add
+            </button>
           </div>
-          {/* Show current order items */}
-          <div>
-            <label className="form-label">Order Items</label>
-            {(selectedItems.list && selectedItems.list.length > 0) ? (
-              <table className="table table-sm">
-                <thead>
+
+          {/* Order Preview */}
+          {list.length > 0 ? (
+            <div className="overflow-x-auto max-h-64 border border-gray-200 rounded-md shadow-inner">
+              <table className="min-w-full text-left text-sm text-gray-700">
+                <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Price</th>
-                    <th>Subtotal</th>
-                    <th></th>
+                    <th className="px-4 py-2 font-semibold">Item</th>
+                    <th className="px-4 py-2 font-semibold">Qty</th>
+                    <th className="px-4 py-2 font-semibold">Price</th>
+                    <th className="px-4 py-2 font-semibold">Subtotal</th>
+                    <th className="px-4 py-2 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedItems.list.map((item, idx) => (
-                    <tr key={idx}>
-                      <td>{item.name}</td>
-                      <td>
+                  {list.map((item, idx) => (
+                    <tr
+                      key={idx}
+                      className="border-t border-gray-200 even:bg-gray-50 hover:bg-indigo-50 transition"
+                    >
+                      <td className="px-4 py-2">{item.name}</td>
+                      <td className="px-4 py-2">{item.quantity}</td>
+                      <td className="px-4 py-2">₹{item.price}</td>
+                      <td className="px-4 py-2">₹{item.price * item.quantity}</td>
+                      <td className="px-4 py-2">
                         <button
-                          className="btn btn-sm btn-outline-secondary me-1"
-                          onClick={() => {
-                            setSelectedItems(prev => {
-                              const updated = prev.list.map(i =>
-                                i.name === item.name
-                                  ? { ...i, quantity: Math.max(1, i.quantity - 1) }
-                                  : i
-                              );
-                              return { ...prev, list: updated };
-                            });
-                          }}
-                        >-</button>
-                        {item.quantity}
-                        <button
-                          className="btn btn-sm btn-outline-secondary ms-1"
-                          onClick={() => {
-                            setSelectedItems(prev => {
-                              const updated = prev.list.map(i =>
-                                i.name === item.name
-                                  ? { ...i, quantity: i.quantity + 1 }
-                                  : i
-                              );
-                              return { ...prev, list: updated };
-                            });
-                          }}
-                        >+</button>
-                      </td>
-                      <td>₹{item.price}</td>
-                      <td>₹{item.price * item.quantity}</td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => {
-                            setSelectedItems(prev => ({
+                          onClick={() =>
+                            setSelectedItems((prev) => ({
                               ...prev,
-                              list: prev.list.filter(i => i.name !== item.name),
-                            }));
-                          }}
-                        >Remove</button>
+                              list: prev.list.filter((i) => i.name !== item.name),
+                            }))
+                          }
+                          className="text-red-600 hover:text-red-800 font-semibold"
+                          aria-label={`Remove ${item.name}`}
+                        >
+                          Remove
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            ) : (
-              <div className="text-muted">No items added yet.</div>
-            )}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic">No items added yet.</p>
+          )}
+
+          {/* Buttons */}
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              onClick={() => setShowOrderForm(false)}
+              className="px-5 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={!selectedTable || list.length === 0}
+              onClick={() => handlePlaceOrder(selectedTable, list)}
+              className="disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition"
+            >
+              Confirm Order
+            </button>
           </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={() => setShowOrderForm(false)}>Cancel</button>
-          <button
-            className="btn btn-success"
-            onClick={() => {
-              // Place order with selectedItems.list
-              handlePlaceOrder(selectedTable, selectedItems.list || []);
-            }}
-            disabled={!selectedTable || !(selectedItems.list && selectedItems.list.length > 0)}
-          >
-            Place Order
-          </button>
         </div>
       </div>
-    </div>
-  </div>
-)}
+    );
+  };
 
-      <div className="row">
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-grow p-6">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
+          <button
+            onClick={() => {
+              setShowOrderForm(true);
+              setSelectedTable("");
+              setSelectedItems({});
+            }}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow transition"
+          >
+            <PlusCircle size={20} />
+            New Order
+          </button>
+        </div>
+
         {Object.keys(unpaidOrdersByTable).length === 0 ? (
-          <div className="col-12 text-center text-muted py-5">
-            <h4>No orders yet.</h4>
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <svg
+              className="w-24 h-24 mb-4 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 10h4l3 8 4-16 3 8h4"
+              ></path>
+            </svg>
+            <p className="text-xl font-semibold">No unpaid orders.</p>
           </div>
         ) : (
-          Object.entries(unpaidOrdersByTable).map(([table, tableOrders]) => (
-            <div className="col-md-6 col-lg-4 mb-4" key={table}>
-              <div className="card shadow border-0 h-100">
-                <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">Table: {table}</h5>
-                  {/* Place Order for this table */}
-                  <button
-                    className="btn btn-outline-primary btn-sm me-2"
-                    onClick={() => {
-                      setShowOrderForm(true);
-                      setSelectedTable(table);
-                      setSelectedItems([]);
-                    }}
-                  >
-                    <PlusCircle size={16} className="me-1" />
-                    Place Order
-                  </button>
-                  <button
-                    className="btn btn-success btn-sm"
-                    onClick={() => handleMarkAsPaid(table, tableOrders)}
-                    title="Mark all as Paid"
-                  >
-                    <CheckCircle size={18} className="me-1" />
-                    Mark as Paid
-                  </button>
-                </div>
-                <div className="card-body">
-                  {tableOrders.map((order) => (
-                    <div key={order._id} className="mb-4 border-bottom pb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="fw-semibold">Order ID: {order._id}</span>
-                        <span className="badge bg-info text-dark">{order.status}</span>
-                      </div>
-                      <table className="table table-sm mb-2">
-                        <thead>
-                          <tr>
-                            <th>Item</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{item.name}</td>
-                              <td>{item.quantity}</td>
-                              <td>₹{item.price}</td>
-                              <td>₹{item.price * item.quantity}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="fw-bold">
-                      Total: ₹
-                      {
-                        tableOrders
-                          .flatMap(order => order.items)
-                          .reduce((sum, item) => sum + item.price * item.quantity, 0)
-                      }
-                    </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(unpaidOrdersByTable).map(([table, tableOrders]) => (
+              <div
+                key={table}
+                className="bg-white rounded-lg shadow-md border border-gray-200 flex flex-col"
+              >
+                <div className="bg-indigo-600 text-white rounded-t-lg px-5 py-3 flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Table {table}</h3>
+                  <div className="flex gap-2">
                     <button
-                      className="btn btn-outline-secondary btn-sm"
-                      onClick={() => handlePrint(table, tableOrders)}
+                      onClick={() => {
+                        setSelectedTable(table);
+                        setSelectedItems({});
+                        setShowOrderForm(true);
+                      }}
+                      className="bg-indigo-500 hover:bg-indigo-700 px-3 py-1 rounded text-sm flex items-center gap-1 transition"
+                      aria-label={`Add order to table ${table}`}
                     >
-                      <Printer size={16} className="me-1" />
-                      Print Bill
+                      <PlusCircle size={16} />
+                      Add
+                    </button>
+                    <button
+                      onClick={() => handleMarkAsPaid(table, tableOrders)}
+                      className="bg-white text-indigo-700 hover:bg-indigo-100 px-3 py-1 rounded text-sm flex items-center gap-1 border border-indigo-700 transition"
+                      aria-label={`Mark orders for table ${table} as paid`}
+                    >
+                      <CheckCircle size={16} />
+                      Paid
                     </button>
                   </div>
                 </div>
+                <div className="p-4 flex-grow overflow-auto">
+                  {tableOrders.map((order) => (
+                    <div
+                      key={order._id}
+                      className="mb-4 border-b border-gray-200 pb-3 last:mb-0 last:border-none"
+                    >
+                      <div className="flex justify-between items-center mb-1 text-xs text-gray-500">
+                        <span>Order ID: {order._id}</span>
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                            order.status === "paid"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {order.status.toUpperCase()}
+                        </span>
+                      </div>
+                      <ul className="text-sm text-gray-700 space-y-0.5">
+                        {order.items.map((item, i) => (
+                          <li key={i} className="flex justify-between">
+                            <span>
+                              {item.name} × {item.quantity}
+                            </span>
+                            <span>₹{item.price * item.quantity}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-3 border-t border-gray-200 flex justify-between items-center">
+                  <strong className="text-lg">
+                    ₹
+                    {tableOrders
+                      .flatMap((o) => o.items)
+                      .reduce((sum, i) => sum + i.price * i.quantity, 0)}
+                  </strong>
+                  <button
+                    onClick={() => handlePrint(table, tableOrders)}
+                    className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-semibold transition"
+                    aria-label={`Print bill for table ${table}`}
+                  >
+                    <Printer size={18} />
+                    Print Bill
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
-      </div>
+
+        {showOrderForm && renderOrderForm()}
+      </main>
     </div>
   );
 }
