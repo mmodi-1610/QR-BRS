@@ -175,35 +175,34 @@ function LoginForm() {
       </div>
 
       {/* Password Field */}
-      <div className="form-floating mb-3 position-relative">
-        <input
-          type={passwordVisible ? "text" : "password"} // Toggle between password and text type
-          className={`form-control ${errors.password ? "is-invalid" : ""}`}
-          id="password"
-          name="password"
-          placeholder={formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
-          value={formData.password}
-          onChange={handleChange}
-          disabled={isLoading}
-          required
-        />
-        <label htmlFor="password">
-          {formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
-        </label>
-        {errors.password && (
-          <div className="invalid-feedback">{errors.password}</div>
-        )}
-        
-        {/* Eye Icon to Toggle Password Visibility */}
-        <div
-          className="position-absolute"
-          style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
-          onClick={() => setPasswordVisible(!passwordVisible)}
-          role="button"
-        >
-          {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
-        </div>
-      </div>
+  <div className="form-floating mb-3 position-relative">
+  <input
+    type={passwordVisible ? "text" : "password"}
+    className={`form-control ${errors.password ? "is-invalid" : ""}`}
+    id="password"
+    name="password"
+    placeholder={formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
+    value={formData.password}
+    onChange={handleChange}
+    disabled={isLoading}
+    required
+  />
+  <label htmlFor="password">
+    {formData.role === "admin" ? "Admin Password" : "Kitchen Password"}
+  </label>
+  {errors.password && (
+    <div className="invalid-feedback">{errors.password}</div>
+  )}
+  {/* Eye Icon */}
+  <div
+    className="position-absolute"
+    style={{ top: "50%", right: "10px", transform: "translateY(-50%)" }}
+    onClick={() => setPasswordVisible(!passwordVisible)}
+    role="button"
+  >
+    {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+  </div>
+</div>
 
       {/* Submit Button */}
       <div className="d-grid gap-2">
