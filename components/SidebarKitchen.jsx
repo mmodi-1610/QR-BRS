@@ -162,7 +162,7 @@ export default function SidebarKitchen() {
                 transition={{ duration: 0.2 }}
               >
                 <p className="text-sm font-medium text-gray-800">{username}</p>
-                <p className="text-xs text-gray-500">Administrator</p>
+                <p className="text-xs text-gray-500">Kitchen</p>
               </motion.div>
             )}
           </AnimatePresence>

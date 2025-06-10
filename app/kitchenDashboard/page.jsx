@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import SidebarKitchen from "@/components/SidebarKitchen";
 import { motion } from "framer-motion";
 import { FaUtensils, FaPlusCircle, FaCheckCircle, FaRegSadTear } from "react-icons/fa";
+import io from "socket.io-client";
 
 export default function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
@@ -23,6 +24,20 @@ export default function KitchenDashboard() {
       .then(data => {
         setMenu(data.menu?.items || []);
       });
+  }, []);
+
+  //socket
+  useEffect(() => {
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
+    const socket = io(SOCKET_URL, { transports: ["websocket"] });
+  
+    socket.on("order:new", (order) => {
+      setOrders((prev) => [order, ...prev]);
+    });
+  
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   // Map item names to categories for grouping
