@@ -15,7 +15,7 @@ function CustomerPageInner() {
   const [hasMainOrder, setHasMainOrder] = useState(false);
 
   // Always check backend for main order state
-  const fetchOrderState = async () => {
+  const fetchOrderState = async () => { 
     if (restaurantId && table) {
       // Fetch all unpaid orders (pending or served) for this table
       const ordersRes = await fetch(`/api/order`)
