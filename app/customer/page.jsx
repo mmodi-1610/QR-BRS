@@ -12,35 +12,51 @@ function CustomerPageInner() {
   const [reorderCart, setReorderCart] = useState([]);
   const [orderId, setOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasMainOrder, setHasMainOrder] = useState(false);
+
+  // Always check backend for main order state
+  const fetchOrderState = async () => {
+    if (restaurantId && table) {
+      // Fetch all unpaid orders (pending or served) for this table
+      const ordersRes = await fetch(`/api/order`)
+      let unpaidOrders = [];
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        unpaidOrders = (ordersData.orders || []).filter(order=>order.table===table && (order.status==="pending" || order.status==="served"));
+      }
+
+      if (unpaidOrders.length > 0) {
+        // Main order is the first unpaid order (oldest)
+        const mainOrder = unpaidOrders.reduce((oldest, curr) =>
+          new Date(curr.createdAt) < new Date(oldest.createdAt) ? curr : oldest
+        );
+        setOrderId(mainOrder.id || mainOrder._id);
+        setHasMainOrder(true);
+      } else {
+        setOrderId(null);
+        setHasMainOrder(false);
+      }
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      if (restaurantId) {
+      if (restaurantId && table) {
         const menuRes = await fetch(`/api/menu?restaurantId=${restaurantId}`);
         const menuData = await menuRes.json();
         setMenu(menuData.menu);
-
-        const orderRes = await fetch(`/api/order/open?restaurantId=${restaurantId}&table=${table}`);
-        if (orderRes.ok) {
-          const orderData = await orderRes.json();
-          if (orderData?.order && orderData.order.status !== "paid") {
-            setOrderId(orderData.order.id);
-            setCart(orderData.order.items || []);
-          }
-        }
+        await fetchOrderState();
       }
       setLoading(false);
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId, table]);
 
+  // Only allow Add to Cart if there is NO main order
   const addToCart = (item) => {
-    if (orderId) {
-      addToReorderCart(item);
-      return;
-    }
-
+    if (hasMainOrder) return;
     setCart((prevCart) => {
       const existing = prevCart.find((i) => i.name === item.name);
       if (existing) {
@@ -49,6 +65,20 @@ function CustomerPageInner() {
         );
       }
       return [...prevCart, { ...item, quantity: 1 }];
+    });
+  };
+
+  // Only allow Reorder if there IS a main order
+  const addToReorderCart = (item) => {
+    if (!hasMainOrder) return;
+    setReorderCart((prev) => {
+      const found = prev.find((i) => i.name === item.name);
+      if (found) {
+        return prev.map((i) =>
+          i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { ...item, quantity: 1 }];
     });
   };
 
@@ -62,18 +92,6 @@ function CustomerPageInner() {
     );
   };
 
-  const addToReorderCart = (item) => {
-    setReorderCart((prev) => {
-      const found = prev.find((i) => i.name === item.name);
-      if (found) {
-        return prev.map((i) =>
-          i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-
   const removeFromReorderCart = (item) => {
     setReorderCart((prev) =>
       prev
@@ -84,36 +102,44 @@ function CustomerPageInner() {
     );
   };
 
+  // Place order logic:
+  // - If NO main order: send cart as main order (POST)
+  // - If main order exists: send reorderCart as reorder (PUT)
   const placeOrder = async () => {
-    const combinedItems = [...cart];
-
-    reorderCart.forEach((reorderItem) => {
-      const index = combinedItems.findIndex((i) => i.name === reorderItem.name);
-      if (index !== -1) {
-        combinedItems[index].quantity += reorderItem.quantity;
-      } else {
-        combinedItems.push(reorderItem);
-      }
-    });
-
-    const payload = {
-      restaurantId,
-      table,
-      items: combinedItems,
-    };
-
-    const url = orderId ? `/api/order/${orderId}` : "/api/order";
-    const method = orderId ? "PUT" : "POST";
-
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    setCart(combinedItems);
-    setReorderCart([]);
-    alert("Order placed!");
+    if (!hasMainOrder) {
+      // Place main order
+      if (cart.length === 0) return;
+      const payload = {
+        restaurantId,
+        table,
+        items: cart,
+      };
+      await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setCart([]);
+      setReorderCart([]);
+      await fetchOrderState(); // Always check backend after placing order
+      alert("Order placed!");
+    } else {
+      // Place reorder (only reorderCart)
+      if (reorderCart.length === 0) return;
+      const payload = {
+        restaurantId,
+        table,
+        items: reorderCart,
+      };
+      await fetch(`/api/order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setReorderCart([]);
+      await fetchOrderState(); // Always check backend after reorder
+      alert("Reorder placed!");
+    }
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -160,15 +186,16 @@ function CustomerPageInner() {
                   <div className="text-lg font-bold mb-3">₹{item.price}</div>
                   <div className="flex gap-2 mt-auto">
                     <button
-                      className={`flex-1 ${orderId ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white"} font-semibold py-2 rounded transition`}
-                      onClick={() => !orderId && addToCart(item)}
-                      disabled={!!orderId}
+                      className={`flex-1 ${hasMainOrder ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white"} font-semibold py-2 rounded transition`}
+                      onClick={() => addToCart(item)}
+                      disabled={hasMainOrder}
                     >
                       Add to Cart
                     </button>
                     <button
-                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded transition"
+                      className={`flex-1 ${!hasMainOrder ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 text-white"} font-semibold py-2 rounded transition`}
                       onClick={() => addToReorderCart(item)}
+                      disabled={!hasMainOrder}
                     >
                       Reorder
                     </button>
@@ -189,9 +216,9 @@ function CustomerPageInner() {
                 <li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-4 py-2 shadow-sm">
                   <span className="font-medium">{item.name}</span>
                   <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => removeFromCart(item)}>−</button>
+                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => removeFromCart(item)} disabled={hasMainOrder}>−</button>
                     <span className="font-semibold text-blue-700">{item.quantity}</span>
-                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => addToCart(item)}>+</button>
+                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => addToCart(item)} disabled={hasMainOrder}>+</button>
                   </div>
                   <span className="text-gray-700 font-semibold">₹{item.price * item.quantity}</span>
                 </li>
@@ -227,14 +254,14 @@ function CustomerPageInner() {
 
           <button
             className={`w-full py-3 rounded font-bold text-white transition ${
-              cart.length + reorderCart.length === 0
+              (!hasMainOrder && cart.length === 0) || (hasMainOrder && reorderCart.length === 0)
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700"
             }`}
-            disabled={cart.length + reorderCart.length === 0}
+            disabled={(!hasMainOrder && cart.length === 0) || (hasMainOrder && reorderCart.length === 0)}
             onClick={placeOrder}
           >
-            {orderId ? "Update Order" : "Place Order"}
+            {!hasMainOrder ? "Place Order" : "Reorder"}
           </button>
         </>
       ) : (
