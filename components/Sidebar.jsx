@@ -28,19 +28,18 @@ export default function Sidebar() {
     if (savedActive) setActivePath(savedActive);
   }, []);
 
-  // 🟡 Auto-close on outside click
+  // Auto-close on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // 🟡 Swipe gesture detection
+  // Swipe gesture detection
   useEffect(() => {
     let startX = 0;
     const handleTouchStart = (e) => {
@@ -52,13 +51,11 @@ export default function Sidebar() {
         setIsOpen(false); // Swipe left to close
       }
     };
-
     const node = sidebarRef.current;
     if (node) {
       node.addEventListener("touchstart", handleTouchStart);
       node.addEventListener("touchend", handleTouchEnd);
     }
-
     return () => {
       if (node) {
         node.removeEventListener("touchstart", handleTouchStart);
@@ -89,7 +86,6 @@ export default function Sidebar() {
 
   const renderLink = (item, index) => {
     const isActive = activePath === item.href;
-
     return (
       <Link
         key={index}
@@ -104,7 +100,6 @@ export default function Sidebar() {
         <div className="text-violet-600 group-hover:scale-110 transition-transform">
           {item.icon}
         </div>
-
         {isOpen ? (
           <span className="text-sm">{item.label}</span>
         ) : (
@@ -117,87 +112,97 @@ export default function Sidebar() {
   };
 
   return (
-    <motion.aside
-      ref={sidebarRef}
-      initial={{ width: isOpen ? 256 : 80 }}
-      animate={{ width: isOpen ? 256 : 80 }}
-      transition={{ duration: 0.3 }}
-      onClick={() => !isOpen && setIsOpen(true)}
-      className="h-screen bg-white shadow-xl border-r flex flex-col cursor-pointer overflow-hidden"
-    >
-      {/* Logo Section */}
-      <div className="flex items-center p-4 border-b space-x-2">
-        <div className="bg-gradient-to-br from-purple-600 to-indigo-600 p-2 rounded-xl shadow-md">
-          <span className="text-white font-bold">🍉</span>
-        </div>
-        <AnimatePresence>
-          {isOpen && (
-            <motion.h1
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-              className="font-bold text-gray-800 text-sm"
-            >
-              QR-BSR
-            </motion.h1>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex-1 p-3 space-y-1">
-        {navLinks.map(renderLink)}
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 border-t">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="bg-gradient-to-tr from-blue-500 to-cyan-500 text-white w-9 h-9 flex items-center justify-center rounded-full font-bold shadow-md">
-            {username?.[0]?.toUpperCase() || "U"}
+    <>
+      {/* Fixed Sidebar */}
+      <motion.aside
+        ref={sidebarRef}
+        initial={{ width: isOpen ? 256 : 80 }}
+        animate={{ width: isOpen ? 256 : 80 }}
+        transition={{ duration: 0.3 }}
+        onClick={() => !isOpen && setIsOpen(true)}
+        className="fixed top-0 left-0 h-screen bg-white shadow-xl border-r flex flex-col cursor-pointer z-10"
+      >
+        {/* Logo Section */}
+        <div className="flex items-center p-4 border-b space-x-2">
+          <div className="bg-gradient-to-br from-purple-600 to-indigo-600 p-2 rounded-xl shadow-md">
+            <span className="text-white font-bold">🍉</span>
           </div>
           <AnimatePresence>
             {isOpen && (
-              <motion.div
+              <motion.h1
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
+                className="font-bold text-gray-800 text-sm"
               >
-                <p className="text-sm font-medium text-gray-800">{username}</p>
-                <p className="text-xs text-gray-500">Administrator</p>
-              </motion.div>
+                QR-BSR
+              </motion.h1>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          className={`w-full flex items-center justify-center gap-2 text-sm py-2 rounded-lg border transition font-medium ${
-            isOpen
-              ? "text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
-              : "text-red-600 border-none"
-          }`}
-        >
-          <LogOut size={16} />
-          {isOpen && "Logout"}
-        </button>
+        {/* Navigation */}
+        <div className="flex-1 p-3 space-y-1">
+          {navLinks.map(renderLink)}
+        </div>
 
-        {/* Hide Sidebar Button */}
-        {isOpen && (
+        {/* Footer */}
+        <div className="p-4 border-t">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="bg-gradient-to-tr from-blue-500 to-cyan-500 text-white w-9 h-9 flex items-center justify-center rounded-full font-bold shadow-md">
+              {username?.[0]?.toUpperCase() || "U"}
+            </div>
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <p className="text-sm font-medium text-gray-800">{username}</p>
+                  <p className="text-xs text-gray-500">Administrator</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Logout Button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(false);
-            }}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+            onClick={handleLogout}
+            className={`w-full flex items-center justify-center gap-2 text-sm py-2 rounded-lg border transition font-medium ${
+              isOpen
+                ? "text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
+                : "text-red-600 border-none"
+            }`}
           >
-            <ChevronLeft size={16} className="transform rotate-180" />
-            <span>Hide Sidebar</span>
+            <LogOut size={16} />
+            {isOpen && "Logout"}
           </button>
-        )}
-      </div>
-    </motion.aside>
+
+          {/* Hide Sidebar Button */}
+          {isOpen && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(false);
+              }}
+              className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+            >
+              <ChevronLeft size={16} className="transform rotate-180" />
+              <span>Hide Sidebar</span>
+            </button>
+          )}
+        </div>
+      </motion.aside>
+
+      {/* Main Content Container */}
+      <main
+        className={`min-h-screen transition-all duration-300 ${isOpen ? 'ml-[256px]' : 'ml-[80px]'}`}
+      >
+        {/* Your page content goes here */}
+      </main>
+    </>
   );
 }

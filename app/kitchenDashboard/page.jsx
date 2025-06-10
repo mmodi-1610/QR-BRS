@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import SidebarKitchen from "@/components/SidebarKitchen";
+import { motion } from "framer-motion";
+import { FaUtensils, FaPlusCircle, FaCheckCircle, FaRegSadTear } from "react-icons/fa";
 
 export default function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
@@ -8,13 +10,14 @@ export default function KitchenDashboard() {
   const [filterType, setFilterType] = useState("table");
   const [selectedTable, setSelectedTable] = useState("");
 
+  // Fetch orders and menu on mount
   useEffect(() => {
     fetch("/api/order")
       .then(res => res.json())
       .then(data => {
-        // Only orders that are pending or served (but not paid)
         setOrders((data.orders || []).filter(o => o.status === "pending" || o.status === "served"));
       });
+
     fetch("/api/menu")
       .then(res => res.json())
       .then(data => {
@@ -22,43 +25,37 @@ export default function KitchenDashboard() {
       });
   }, []);
 
-  // Build a map: item name -> category
+  // Map item names to categories for grouping
   const nameToCategory = {};
   menu.forEach(item => {
     nameToCategory[item.name] = item.category || "Other";
   });
 
-  // Group relevant orders by table
+  // Group orders by table
   const ordersByTable = orders.reduce((acc, order) => {
     acc[order.table] = acc[order.table] || [];
     acc[order.table].push(order);
     return acc;
   }, {});
 
-  // Main and Add-On logic as per your definition
+  // Separate main and add-on orders
   const mainOrders = [];
   const addOnOrders = [];
   Object.entries(ordersByTable).forEach(([table, tableOrders]) => {
-    // Only consider tables that have at least one pending order
-    const pendingOrders = tableOrders.filter(o => o.status === "pending" || o.status==="served");
+    const pendingOrders = tableOrders.filter(o => o.status === "pending" || o.status === "served");
     if (pendingOrders.length > 0) {
-      // Main order: oldest pending order
       const mainOrder = pendingOrders.reduce((oldest, curr) =>
         new Date(curr.createdAt) < new Date(oldest.createdAt) ? curr : oldest
       );
       mainOrders.push(mainOrder);
 
-      // Add-ons: all other orders (pending or served, but not paid), except the main order
       tableOrders
-        .filter(
-          o =>
-            (o.status === "pending") &&
-            o._id !== mainOrder._id
-        )
+        .filter(o => o.status === "pending" && o._id !== mainOrder._id)
         .forEach(o => addOnOrders.push(o));
     }
   });
 
+  // Group items by category for quantity view
   function getCategoryWiseItems(orderList) {
     const itemMap = {};
     orderList.forEach(order => {
@@ -75,6 +72,7 @@ export default function KitchenDashboard() {
     }));
   }
 
+  // Mark an order as served
   const markAsServed = async (orderId) => {
     await fetch("/api/order", {
       method: "PATCH",
@@ -86,155 +84,193 @@ export default function KitchenDashboard() {
     ));
   };
 
+  // Filtering logic
   const filteredMainOrders = filterType === "table" && selectedTable
     ? mainOrders.filter(o => o.table === selectedTable)
     : mainOrders;
+
   const filteredAddOnOrders = filterType === "table" && selectedTable
     ? addOnOrders.filter(o => o.table === selectedTable)
     : addOnOrders;
 
   const allTables = Object.keys(ordersByTable);
 
+  // --- Render ---
   return (
-    <div className="container py-4">
+    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <SidebarKitchen />
-      <h1 className="mb-4 fw-bold">KITCHEN DASHBOARD</h1>
-      <div className="mb-3 d-flex align-items-center gap-3">
-        <label className="fw-semibold">Filter:</label>
-        <select
-          className="form-select w-auto"
-          value={filterType}
-          onChange={e => {
-            setFilterType(e.target.value);
-            setSelectedTable("");
-          }}
+      <main className="flex-1 p-8 overflow-auto">
+        <motion.h1
+          className="text-4xl font-extrabold text-gray-800 mb-10 flex items-center gap-3"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          <option value="table">Table Wise</option>
-          <option value="quantity">Net Quantity (Category Wise)</option>
-        </select>
-        {filterType === "table" && (
+          <FaUtensils className="text-blue-500" />
+          Kitchen Dashboard
+        </motion.h1>
+
+        {/* Filters */}
+        <section className="flex flex-wrap items-center gap-4 mb-10">
+          <label className="text-lg font-medium text-gray-700">Filter:</label>
           <select
-            className="form-select w-auto"
-            value={selectedTable}
-            onChange={e => setSelectedTable(e.target.value)}
+            className="px-4 py-2 rounded-lg border shadow-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+            value={filterType}
+            onChange={e => {
+              setFilterType(e.target.value);
+              setSelectedTable("");
+            }}
+            aria-label="Filter Type"
           >
-            <option value="">All Tables</option>
-            {allTables.map(table => (
-              <option key={table} value={table}>{table}</option>
-            ))}
+            <option value="table">Table Wise</option>
+            <option value="quantity">Net Quantity</option>
           </select>
-        )}
-      </div>
 
-      <div className="row">
-        {/* Main Orders Section */}
-        <div className="col-md-6 border-end">
-          <h3 className="mb-3">Main Orders</h3>
-          {filterType === "quantity" ? (
-            getCategoryWiseItems(mainOrders.filter(o => o.status === "pending")).map(cat => (
-              <div key={cat.category} className="mb-3">
-                <h5>{cat.category}</h5>
-                <ul>
-                  {cat.items.map(item => (
-                    <li key={item.name}>
-                      {item.name}: <b>{item.qty}</b>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          ) : (
-            filteredMainOrders.filter(order => order.status === "pending").length === 0 ? (
-              <div className="text-muted">No main orders.</div>
-            ) : (
-              filteredMainOrders
-                .filter(order => order.status === "pending")
-                .map(order => (
-                  <div key={order._id} className="card mb-3">
-                    <div className="card-header d-flex justify-content-between align-items-center">
-                      <span>Table: <b>{order.table}</b> | Order ID: {order._id}</span>
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => markAsServed(order._id)}
-                      >
-                        Mark as Served
-                      </button>
-                    </div>
-                    <div className="card-body">
-                      <ul className="mb-0">
-                        {order.items.map((item, idx) => (
-                          <li key={idx}>
-                            {item.name} ({item.quantity}){" "}
-                            {nameToCategory[item.name] ? (
-                              <span className="text-muted small">[{nameToCategory[item.name]}]</span>
-                            ) : ""}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="text-muted small mt-2">
-                        Placed at: {order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}
-                      </div>
-                    </div>
-                  </div>
-                ))
-            )
+          {filterType === "table" && (
+            <select
+              className="px-4 py-2 rounded-lg border shadow-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+              value={selectedTable}
+              onChange={e => setSelectedTable(e.target.value)}
+              aria-label="Select Table"
+            >
+              <option value="">All Tables</option>
+              {allTables.map(table => (
+                <option key={table} value={table}>{table}</option>
+              ))}
+            </select>
           )}
-        </div>
+        </section>
 
-        {/* Add-On Orders Section */}
-        <div className="col-md-6">
-          <h3 className="mb-3">Add-On Orders</h3>
-          {filterType === "quantity" ? (
-            getCategoryWiseItems(addOnOrders.filter(o => o.status === "pending")).map(cat => (
-              <div key={cat.category} className="mb-3">
-                <h5>{cat.category}</h5>
-                <ul>
-                  {cat.items.map(item => (
-                    <li key={item.name}>
-                      {item.name}: <b>{item.qty}</b>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          ) : (
-            filteredAddOnOrders.filter(order => order.status === "pending").length === 0 ? (
-              <div className="text-muted">No add-on orders.</div>
-            ) : (
-              filteredAddOnOrders
-                .filter(order => order.status === "pending")
-                .map(order => (
-                  <div key={order._id} className="card mb-3">
-                    <div className="card-header d-flex justify-content-between align-items-center">
-                      <span>Table: <b>{order.table}</b> | Order ID: {order._id}</span>
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => markAsServed(order._id)}
-                      >
-                        Mark as Served
-                      </button>
-                    </div>
-                    <div className="card-body">
-                      <ul className="mb-0">
-                        {order.items.map((item, idx) => (
-                          <li key={idx}>
-                            {item.name} ({item.quantity}){" "}
-                            {nameToCategory[item.name] ? (
-                              <span className="text-muted small">[{nameToCategory[item.name]}]</span>
-                            ) : ""}
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="text-muted small mt-2">
-                        Placed at: {order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}
-                      </div>
-                    </div>
-                  </div>
-                ))
-            )
-          )}
+        {/* Orders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {/* Main Orders */}
+          <OrderSection
+            icon={<FaUtensils className="text-2xl text-blue-400" />}
+            title="Main Orders"
+            color="from-blue-100 to-blue-50"
+            filterType={filterType}
+            orders={filteredMainOrders.filter(o => o.status === "pending")}
+            renderOrderCards={renderOrderCards}
+            renderCategoryView={renderCategoryView}
+            getCategoryWiseItems={getCategoryWiseItems}
+            markAsServed={markAsServed}
+            nameToCategory={nameToCategory}
+          />
+
+          {/* Add-on Orders */}
+          <OrderSection
+            icon={<FaPlusCircle className="text-2xl text-purple-400" />}
+            title="Add-On Orders"
+            color="from-purple-100 to-purple-50"
+            filterType={filterType}
+            orders={filteredAddOnOrders.filter(o => o.status === "pending")}
+            renderOrderCards={renderOrderCards}
+            renderCategoryView={renderCategoryView}
+            getCategoryWiseItems={getCategoryWiseItems}
+            markAsServed={markAsServed}
+            nameToCategory={nameToCategory}
+          />
         </div>
-      </div>
+      </main>
     </div>
   );
+
+  // --- Helper Components ---
+
+  function OrderSection({
+    icon, title, color, filterType, orders,
+    renderOrderCards, renderCategoryView, getCategoryWiseItems, ...rest
+  }) {
+    return (
+      <section
+        className={`rounded-2xl shadow-lg bg-gradient-to-br ${color} p-6 border border-gray-200`}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          {icon}
+          <h2 className="text-xl font-semibold text-gray-700">{title}</h2>
+        </div>
+        <hr className="mb-4 border-gray-200" />
+        {filterType === "quantity"
+          ? renderCategoryView(getCategoryWiseItems(orders))
+          : renderOrderCards(orders, rest)}
+      </section>
+    );
+  }
+
+  // --- Render Order Cards ---
+  function renderOrderCards(orderList, { markAsServed, nameToCategory }) {
+    if (orderList.length === 0)
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <FaRegSadTear className="text-3xl mb-2" />
+          <span className="italic">No orders found.</span>
+        </div>
+      );
+
+    return orderList.map(order => (
+      <motion.div
+        key={order._id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ scale: 1.03, boxShadow: "0 6px 24px rgba(0,0,0,0.08)" }}
+        className="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-5 transition-all"
+      >
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm text-gray-700 font-medium">
+            <span className="text-blue-600 font-semibold">Table {order.table}</span>
+            <span className="mx-2 text-gray-300">|</span>
+            <span className="text-xs text-gray-400">ID: {order._id.slice(-6)}</span>
+          </div>
+          <button
+            onClick={() => markAsServed(order._id)}
+            aria-label="Mark as Served"
+            className="flex items-center gap-2 bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white text-sm px-4 py-1.5 rounded-lg shadow transition focus:outline-none focus:ring-2 focus:ring-green-400"
+          >
+            <FaCheckCircle className="text-lg" />
+            Served
+          </button>
+        </div>
+        <ul className="text-sm text-gray-700 space-y-1">
+          {order.items.map((item, idx) => (
+            <li key={idx} className="flex items-center gap-2">
+              <span className="font-semibold">{item.name}</span>
+              <span className="text-xs text-gray-500">({item.quantity})</span>
+              <span className="text-xs text-gray-400 ml-2">[{nameToCategory[item.name]}]</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-gray-400 mt-3">
+          Placed at: <span className="font-mono">{new Date(order.createdAt).toLocaleString()}</span>
+        </p>
+      </motion.div>
+    ));
+  }
+
+  // --- Render Category View ---
+  function renderCategoryView(categories) {
+    if (!categories.length)
+      return (
+        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <FaRegSadTear className="text-3xl mb-2" />
+          <span className="italic">No items to show.</span>
+        </div>
+      );
+
+    return categories.map(cat => (
+      <motion.div
+        key={cat.category}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white border border-gray-100 rounded-lg p-4 mb-4 shadow-sm"
+      >
+        <h4 className="text-md font-semibold text-gray-800 mb-2">{cat.category}</h4>
+        <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+          {cat.items.map(item => (
+            <li key={item.name}>
+              {item.name}: <span className="font-bold">{item.qty}</span>
+            </li>
+          ))}
+        </ul>
+      </motion.div>
+    ));
+  }
 }

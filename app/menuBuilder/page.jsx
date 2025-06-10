@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
 
+// --- Initial Categories ---
 const initialCategories = [
   { name: "Starters" },
   { name: "Main" },
@@ -11,6 +12,7 @@ const initialCategories = [
   { name: "Drinks" },
 ];
 
+// --- Cloudinary Upload Helper ---
 async function uploadToCloudinary(file, folderName) {
   const data = new FormData();
   data.append("file", file);
@@ -28,6 +30,7 @@ async function uploadToCloudinary(file, folderName) {
   return json.secure_url;
 }
 
+// --- JWT Helper ---
 function getUserIdFromToken() {
   const token = Cookies.get("token");
   if (!token) return null;
@@ -52,7 +55,6 @@ export default function MenuBuilder() {
     photo: null,
     photoPreview: null,
   });
-
   const [editingIndex, setEditingIndex] = useState(null);
   const [newCategory, setNewCategory] = useState("");
 
@@ -76,6 +78,7 @@ export default function MenuBuilder() {
     fetchMenu();
   }, []);
 
+  // --- Category Handlers ---
   const handleAddCategory = () => {
     if (
       newCategory.trim() &&
@@ -91,6 +94,7 @@ export default function MenuBuilder() {
     setItems(items.filter((item) => item.category !== name));
   };
 
+  // --- Form Handlers ---
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "photo" && files && files[0]) {
@@ -167,35 +171,37 @@ export default function MenuBuilder() {
     }
   };
 
+  // --- Render ---
   return (
-    <div className="flex min-h-screen bg-gradient-to-r from-indigo-50 to-white text-gray-800">
+    <div className="flex min-h-screen bg-gradient-to-tr from-indigo-50 via-white to-pink-50 text-gray-800">
       <Sidebar />
 
       <main className="flex-grow p-8 overflow-auto max-w-[1400px] mx-auto">
-        <h1 className="mb-8 text-4xl font-extrabold text-indigo-700 tracking-tight drop-shadow-sm">
+        <h1 className="mb-10 text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-pink-500 to-fuchsia-500 tracking-tight drop-shadow-lg">
           Menu Builder
         </h1>
 
         {/* Categories Section */}
-        <section className="mb-8 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-2xl font-semibold mb-5 text-indigo-600">Categories</h2>
+        <section className="mb-10 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-indigo-100">
+          <h2 className="text-2xl font-bold mb-6 text-indigo-600">Categories</h2>
           <div className="flex gap-3 mb-6 max-w-md">
             <input
               type="text"
-              className="flex-grow border border-indigo-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+              className="flex-grow border border-indigo-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
               placeholder="Add new category"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAddCategory()}
             />
             <button
-              className="bg-indigo-600 text-white px-6 rounded-lg hover:bg-indigo-700 transition shadow-md"
+              className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white px-6 rounded-lg hover:from-indigo-600 hover:to-pink-600 transition shadow-lg font-semibold"
               onClick={handleAddCategory}
               type="button"
             >
               Add
             </button>
           </div>
-          <ul className="divide-y divide-indigo-100 max-w-md rounded-md border border-indigo-100">
+          <ul className="divide-y divide-indigo-100 max-w-md rounded-md border border-indigo-100 bg-white/60 shadow">
             {categories.map((cat) => (
               <li
                 key={cat.name}
@@ -216,20 +222,20 @@ export default function MenuBuilder() {
         </section>
 
         {/* Food Item Form */}
-        <section className="mb-10 bg-white rounded-xl shadow-md p-6 max-w-5xl">
-          <h2 className="text-2xl font-semibold mb-6 text-indigo-600">
+        <section className="mb-12 bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 max-w-5xl border border-indigo-100">
+          <h2 className="text-2xl font-bold mb-7 text-indigo-600">
             {editingIndex !== null ? "Edit Item" : "Add Item"}
           </h2>
           <form
             onSubmit={handleAddOrEditItem}
-            className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end"
+            className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end"
           >
             <div>
               <label className="block mb-2 font-semibold text-indigo-800">Food Name</label>
               <input
                 type="text"
                 name="name"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 placeholder="Food Name"
                 value={form.name}
                 onChange={handleChange}
@@ -241,7 +247,7 @@ export default function MenuBuilder() {
               <label className="block mb-2 font-semibold text-indigo-800">Category</label>
               <select
                 name="category"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 value={form.category}
                 onChange={handleChange}
                 required
@@ -261,7 +267,7 @@ export default function MenuBuilder() {
               <label className="block mb-2 font-semibold text-indigo-800">Type</label>
               <select
                 name="veg"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 value={form.veg}
                 onChange={handleChange}
               >
@@ -274,7 +280,7 @@ export default function MenuBuilder() {
               <label className="block mb-2 font-semibold text-indigo-800">Spice Level</label>
               <select
                 name="spice"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 value={form.spice}
                 onChange={handleChange}
               >
@@ -289,7 +295,7 @@ export default function MenuBuilder() {
               <input
                 type="number"
                 name="price"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 placeholder="Price"
                 value={form.price}
                 onChange={handleChange}
@@ -302,7 +308,7 @@ export default function MenuBuilder() {
               <label className="block mb-2 font-semibold text-indigo-800">Description</label>
               <textarea
                 name="description"
-                className="w-full border border-indigo-300 rounded-lg px-4 py-3 resize-none placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                className="w-full border border-indigo-200 rounded-lg px-4 py-3 resize-none placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition shadow"
                 placeholder="Description"
                 value={form.description || ""}
                 onChange={handleChange}
@@ -323,7 +329,7 @@ export default function MenuBuilder() {
                 <img
                   src={form.photoPreview}
                   alt="Preview"
-                  className="mt-3 w-20 h-20 object-cover rounded-lg border border-indigo-300 shadow-sm"
+                  className="mt-3 w-20 h-20 object-cover rounded-lg border border-indigo-200 shadow"
                 />
               )}
             </div>
@@ -331,14 +337,14 @@ export default function MenuBuilder() {
             <div className="flex items-center gap-4">
               <button
                 type="submit"
-                className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow hover:bg-indigo-700 transition"
+                className="bg-gradient-to-r from-indigo-500 to-pink-500 text-white px-7 py-3 rounded-lg shadow-lg hover:from-indigo-600 hover:to-pink-600 transition font-bold"
               >
                 {editingIndex !== null ? "Update Item" : "Add Item"}
               </button>
               {editingIndex !== null && (
                 <button
                   type="button"
-                  className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition"
+                  className="bg-gray-200 text-gray-700 px-7 py-3 rounded-lg hover:bg-gray-300 transition font-semibold"
                   onClick={() => {
                     setForm({
                       name: "",
@@ -360,9 +366,10 @@ export default function MenuBuilder() {
           </form>
         </section>
 
-        <div className="flex justify-end mb-8">
+        {/* Save Menu Button */}
+        <div className="flex justify-end mb-10">
           <button
-            className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition shadow-lg"
+            className="bg-gradient-to-r from-green-500 to-lime-400 text-white px-9 py-3 rounded-lg hover:from-green-600 hover:to-lime-500 transition shadow-2xl font-extrabold text-lg"
             onClick={handleSaveMenu}
             type="button"
           >
@@ -371,9 +378,9 @@ export default function MenuBuilder() {
         </div>
 
         {/* Menu Items List */}
-        <section className="bg-white rounded-xl shadow-md p-6 overflow-x-auto">
-          <h2 className="text-2xl font-semibold mb-6 text-indigo-600">Menu Items</h2>
-          <table className="w-full table-auto border-collapse border border-indigo-200 rounded-md">
+        <section className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-2xl p-8 overflow-x-auto border border-indigo-100">
+          <h2 className="text-2xl font-bold mb-7 text-indigo-600">Menu Items</h2>
+          <table className="w-full table-auto border-collapse border border-indigo-200 rounded-md shadow">
             <thead className="bg-indigo-50 rounded-t-md">
               <tr>
                 {[
@@ -435,7 +442,7 @@ export default function MenuBuilder() {
                         <img
                           src={item.photo}
                           alt="Item"
-                          className="w-16 h-16 object-cover rounded-lg border border-indigo-300 shadow-sm"
+                          className="w-16 h-16 object-cover rounded-lg border border-indigo-200 shadow"
                         />
                       )}
                     </td>
