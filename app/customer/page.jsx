@@ -13,21 +13,26 @@ function CustomerPageInner() {
   const [orderId, setOrderId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasMainOrder, setHasMainOrder] = useState(false);
+  const [unpaidOrders, setUnpaidOrders] = useState([]);
+  const [billLoading, setBillLoading] = useState(false);
 
-  // Always check backend for main order state
-  const fetchOrderState = async () => { 
+  // Always check backend for main order state and fetch unpaid orders
+  const fetchOrderState = async () => {
     if (restaurantId && table) {
       // Fetch all unpaid orders (pending or served) for this table
-      const ordersRes = await fetch(`/api/order`)
-      let unpaidOrders = [];
+      const ordersRes = await fetch(`/api/order`);
+      let unpaidOrdersArr = [];
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
-        unpaidOrders = (ordersData.orders || []).filter(order=>order.table===table && (order.status==="pending" || order.status==="served"));
+        unpaidOrdersArr = (ordersData.orders || []).filter(
+          order => order.table === table && (order.status !="paid")
+        );
       }
+      setUnpaidOrders(unpaidOrdersArr);
 
-      if (unpaidOrders.length > 0) {
+      if (unpaidOrdersArr.length > 0) {
         // Main order is the first unpaid order (oldest)
-        const mainOrder = unpaidOrders.reduce((oldest, curr) =>
+        const mainOrder = unpaidOrdersArr.reduce((oldest, curr) =>
           new Date(curr.createdAt) < new Date(oldest.createdAt) ? curr : oldest
         );
         setOrderId(mainOrder.id || mainOrder._id);
@@ -142,9 +147,52 @@ function CustomerPageInner() {
     }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const reorderTotal = reorderCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const total = cartTotal + reorderTotal;
+  // Unified cart logic
+  const cartItems = hasMainOrder ? reorderCart : cart;
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartHeading = hasMainOrder ? "Your Re-order" : "Your Order";
+  const cartEmptyText = hasMainOrder ? "No items in re-order." : "No items in cart.";
+
+  // Bill calculation for all unpaid orders of this table
+  const billItems = [];
+  let billTotal = 0;
+  unpaidOrders.forEach(order => {
+    order.items.forEach(item => {
+      const found = billItems.find(i => i.name === item.name && i.price === item.price);
+      if (found) {
+        found.quantity += item.quantity;
+        found.total += item.price * item.quantity;
+      } else {
+        billItems.push({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          total: item.price * item.quantity,
+        });
+      }
+      billTotal += item.price * item.quantity;
+    });
+  });
+
+  // Call for bill handler (dummy)
+  const handleCallForBill = async () => {
+    setBillLoading(true);
+    // You can implement an API call here to notify staff
+    setTimeout(() => {
+      setBillLoading(false);
+      alert("Staff has been notified. Please wait for your bill.");
+    }, 1200);
+  };
+
+  // Pay Online handler (dummy)
+  const handlePayOnline = async () => {
+    setBillLoading(true);
+    // You can implement payment integration here
+    setTimeout(() => {
+      setBillLoading(false);
+      alert("Redirecting to payment gateway...");
+    }, 1200);
+  };
 
   if (!restaurantId || !table) {
     return (
@@ -205,64 +253,127 @@ function CustomerPageInner() {
             ))}
           </div>
 
-          {/* Cart Section */}
+          {/* Unified Cart Section */}
           <hr className="my-8" />
-          <h4 className="text-2xl font-bold mb-4">Your Order</h4>
-          {cart.length === 0 ? (
-            <div className="text-gray-500 mb-6">No items in cart.</div>
+          <h4 className="text-2xl font-bold mb-4">{cartHeading}</h4>
+          {cartItems.length === 0 ? (
+            <div className="text-gray-500 mb-6">{cartEmptyText}</div>
           ) : (
             <ul className="mb-6 space-y-3">
-              {cart.map((item, idx) => (
-                <li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-4 py-2 shadow-sm">
+              {cartItems.map((item, idx) => (
+                <li
+                  key={idx}
+                  className={`flex items-center justify-between ${
+                    hasMainOrder ? "bg-purple-50" : "bg-gray-50"
+                  } rounded px-4 py-2 shadow-sm`}
+                >
                   <span className="font-medium">{item.name}</span>
                   <div className="flex items-center gap-2">
-                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => removeFromCart(item)} disabled={hasMainOrder}>−</button>
-                    <span className="font-semibold text-blue-700">{item.quantity}</span>
-                    <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => addToCart(item)} disabled={hasMainOrder}>+</button>
+                    <button
+                      className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold"
+                      onClick={() =>
+                        hasMainOrder
+                          ? removeFromReorderCart(item)
+                          : removeFromCart(item)
+                      }
+                    >
+                      −
+                    </button>
+                    <span
+                      className={`font-semibold ${
+                        hasMainOrder ? "text-purple-700" : "text-blue-700"
+                      }`}
+                    >
+                      {item.quantity}
+                    </span>
+                    <button
+                      className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold"
+                      onClick={() =>
+                        hasMainOrder
+                          ? addToReorderCart(item)
+                          : addToCart(item)
+                      }
+                    >
+                      +
+                    </button>
                   </div>
-                  <span className="text-gray-700 font-semibold">₹{item.price * item.quantity}</span>
+                  <span className="text-gray-700 font-semibold">
+                    ₹{item.price * item.quantity}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
 
-          {/* Reorder Section */}
-          {reorderCart.length > 0 && (
-            <>
-              <h4 className="text-2xl font-bold mb-4">Reorder Items</h4>
-              <ul className="mb-6 space-y-3">
-                {reorderCart.map((item, idx) => (
-                  <li key={idx} className="flex items-center justify-between bg-purple-50 rounded px-4 py-2 shadow-sm">
-                    <span className="font-medium">{item.name}</span>
-                    <div className="flex items-center gap-2">
-                      <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => removeFromReorderCart(item)}>−</button>
-                      <span className="font-semibold text-purple-700">{item.quantity}</span>
-                      <button className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-lg font-bold" onClick={() => addToReorderCart(item)}>+</button>
-                    </div>
-                    <span className="text-gray-700 font-semibold">₹{item.price * item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {/* Combined Total and Order Button */}
+          {/* Total and Order Button */}
           <div className="flex justify-end items-center mb-6">
             <span className="text-xl font-bold mr-2">Total:</span>
-            <span className="text-2xl text-green-700 font-bold">₹{total}</span>
+            <span className="text-2xl text-green-700 font-bold">₹{cartTotal}</span>
           </div>
 
           <button
             className={`w-full py-3 rounded font-bold text-white transition ${
-              (!hasMainOrder && cart.length === 0) || (hasMainOrder && reorderCart.length === 0)
+              cartItems.length === 0
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700"
             }`}
-            disabled={(!hasMainOrder && cart.length === 0) || (hasMainOrder && reorderCart.length === 0)}
+            disabled={cartItems.length === 0}
             onClick={placeOrder}
           >
             {!hasMainOrder ? "Place Order" : "Reorder"}
           </button>
+
+          {/* Bill Section */}
+          <hr className="my-8" />
+          <h4 className="text-2xl font-bold mb-4 text-center">Current Bill</h4>
+          {unpaidOrders.length === 0 ? (
+            <div className="text-gray-500 mb-6 text-center">No unpaid orders yet.</div>
+          ) : (
+            <div className="max-w-xl mx-auto bg-white rounded-lg shadow p-6 mb-8">
+              <table className="w-full mb-4">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Item</th>
+                    <th className="text-center py-2">Qty</th>
+                    <th className="text-right py-2">Price</th>
+                    <th className="text-right py-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {billItems.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-1">{item.name}</td>
+                      <td className="py-1 text-center">{item.quantity}</td>
+                      <td className="py-1 text-right">₹{item.price}</td>
+                      <td className="py-1 text-right">₹{item.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t">
+                    <td colSpan={3} className="text-right font-bold py-2">Grand Total:</td>
+                    <td className="text-right font-bold py-2 text-green-700">₹{billTotal}</td>
+                  </tr>
+                </tfoot>
+              </table>
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                <button
+                  className="flex-1 py-3 rounded font-bold text-white bg-orange-500 hover:bg-orange-600 transition"
+                  onClick={handleCallForBill}
+                  disabled={billLoading}
+                >
+                  {billLoading ? "Calling Staff..." : "Call for Bill"}
+                </button>
+                <button
+                  className="flex-1 py-3 rounded font-bold text-white bg-blue-600 hover:bg-blue-700 transition"
+                  onClick={handlePayOnline}
+                  disabled={billLoading}
+                >
+                  {billLoading ? "Processing..." : "Pay Online"}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="text-red-600 font-semibold">Menu not found.</div>

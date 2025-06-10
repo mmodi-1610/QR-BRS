@@ -4,6 +4,9 @@ import { Printer, CheckCircle, PlusCircle, X } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
+import io from "socket.io-client";
+
+let socket;
 
 function getUserIdFromToken() {
   const token = Cookies.get("token");
@@ -34,6 +37,19 @@ export default function OrderManagement() {
     };
     fetchData();
   }, []);
+
+useEffect(() => {
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
+  const socket = io(SOCKET_URL, { transports: ["websocket"] });
+
+  socket.on("order:new", (order) => {
+    setOrders((prev) => [order, ...prev]);
+  });
+
+  return () => {
+    socket.disconnect();
+  };
+}, []);
 
   const unpaidOrdersByTable = orders
     .filter((o) => o.status !== "paid")

@@ -36,6 +36,10 @@ export async function POST(request) {
       createdAt: new Date(),
     });
 
+    if (global.io) {
+      global.io.emit("order:new", order);
+    }
+
     return NextResponse.json({ success: true, order });
   } catch (error) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
