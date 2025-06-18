@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-// import Sidebar from "@/components/Sidebar";
-import Order from "@/models/Order"; // You'll need to create this model
+import Order from "@/models/Order";
+import CustomerRequest from "@/models/CustomerRequest"; // NEW: import the model
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
 
+// --- Helper for token ---
 function getUserIdFromToken() {
   const token = Cookies.get("token");
   if (!token) return null;
@@ -16,7 +17,35 @@ function getUserIdFromToken() {
   }
 }
 
+// --- ORDER LOGIC (unchanged) ---
+
 export async function POST(request) {
+  // If this is a customer request, handle that
+  const url = new URL(request.url);
+  if (url.searchParams.get("customerRequest") === "1") {
+    try {
+      const { restaurantId, table, type } = await request.json();
+      if (!restaurantId || !table || !type) {
+        return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
+      }
+      if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(process.env.MONGODB_URI);
+      }
+      const customerRequest = await CustomerRequest.create({
+        restaurantId,
+        table,
+        type,
+        status: "pending",
+        createdAt: new Date(),
+      });
+      // Optionally: if (global.io) global.io.emit("customer-request:new", customerRequest);
+      return NextResponse.json({ success: true, request: customerRequest });
+    } catch (error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  // --- ORIGINAL ORDER POST ---
   try {
     const { restaurantId, table, items } = await request.json();
 
@@ -46,8 +75,27 @@ export async function POST(request) {
   }
 }
 
-// Get all orders (admin)
+// --- GET all orders (admin) or customer requests ---
 export async function GET(request) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("customerRequest") === "1") {
+    // Handle customer request fetch
+    try {
+      const restaurantId = url.searchParams.get("restaurantId");
+      if (!restaurantId) {
+        return NextResponse.json({ success: false, message: "Missing restaurantId" }, { status: 400 });
+      }
+      if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(process.env.MONGODB_URI);
+      }
+      const requests = await CustomerRequest.find({ restaurantId }).sort({ createdAt: -1 });
+      return NextResponse.json({ success: true, requests });
+    } catch (error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  // --- ORIGINAL ORDER GET ---
   try {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI);
@@ -78,8 +126,60 @@ export async function GET(request) {
   }
 }
 
+// Add this to your route.js
+export async function DELETE(request) {
+  try {
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json({ success: false, message: "Missing id" }, { status: 400 });
+    }
+    
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI);
+    }
 
+    // Permanent deletion
+    const deletedRequest = await CustomerRequest.findByIdAndDelete(id);
+    
+    if (!deletedRequest) {
+      return NextResponse.json({ success: false, message: "Request not found" }, { status: 404 });
+    }
+    
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
+
+// --- PATCH orders or customer requests ---
 export async function PATCH(request) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("customerRequest") === "1") {
+    // Handle customer request PATCH (resolve)
+    try {
+      const { id } = await request.json();
+      if (!id) {
+        return NextResponse.json({ success: false, message: "Missing id" }, { status: 400 });
+      }
+      if (mongoose.connection.readyState === 0) {
+        await mongoose.connect(process.env.MONGODB_URI);
+      }
+      const updated = await CustomerRequest.findByIdAndUpdate(
+        id,
+        { status: "resolved" },
+        { new: true }
+      );
+      if (!updated) {
+        return NextResponse.json({ success: false, message: "Request not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, request: updated });
+    } catch (error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+  }
+
+  // --- ORIGINAL ORDER PATCH ---
   try {
     const { ids, status } = await request.json();
     if (!ids || !Array.isArray(ids) || !status) {

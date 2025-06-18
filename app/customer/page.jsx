@@ -15,6 +15,7 @@ function CustomerPageInner() {
   const [hasMainOrder, setHasMainOrder] = useState(false);
   const [unpaidOrders, setUnpaidOrders] = useState([]);
   const [billLoading, setBillLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
 
   // Always check backend for main order state and fetch unpaid orders
   const fetchOrderState = async () => {
@@ -25,7 +26,7 @@ function CustomerPageInner() {
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
         unpaidOrdersArr = (ordersData.orders || []).filter(
-          order => order.table === table && (order.status !="paid")
+          order => order.table === table && (order.status !== "paid")
         );
       }
       setUnpaidOrders(unpaidOrdersArr);
@@ -174,20 +175,49 @@ function CustomerPageInner() {
     });
   });
 
-  // Call for bill handler (dummy)
+  // Call for bill handler (API triggers staff notification)
   const handleCallForBill = async () => {
     setBillLoading(true);
-    // You can implement an API call here to notify staff
-    setTimeout(() => {
-      setBillLoading(false);
+    try {
+      await fetch("/api/order?customerRequest=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId,
+          table,
+          type: "bill",
+        }),
+      });
       alert("Staff has been notified. Please wait for your bill.");
-    }, 1200);
+    } catch {
+      alert("Failed to send request. Please try again.");
+    }
+    setBillLoading(false);
+  };
+
+  // Call for waiter handler (API triggers staff notification)
+  const handleCallForWaiter = async () => {
+    setRequestLoading(true);
+    try {
+      await fetch("/api/order?customerRequest=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurantId,
+          table,
+          type: "waiter",
+        }),
+      });
+      alert("Waiter is coming to your table.");
+    } catch {
+      alert("Failed to send request. Please try again.");
+    }
+    setRequestLoading(false);
   };
 
   // Pay Online handler (dummy)
   const handlePayOnline = async () => {
     setBillLoading(true);
-    // You can implement payment integration here
     setTimeout(() => {
       setBillLoading(false);
       alert("Redirecting to payment gateway...");
@@ -363,6 +393,13 @@ function CustomerPageInner() {
                   disabled={billLoading}
                 >
                   {billLoading ? "Calling Staff..." : "Call for Bill"}
+                </button>
+                <button
+                  className="flex-1 py-3 rounded font-bold text-white bg-gray-800 hover:bg-gray-900 transition"
+                  onClick={handleCallForWaiter}
+                  disabled={requestLoading}
+                >
+                  {requestLoading ? "Requesting..." : "Call Waiter"}
                 </button>
                 <button
                   className="flex-1 py-3 rounded font-bold text-white bg-blue-600 hover:bg-blue-700 transition"
