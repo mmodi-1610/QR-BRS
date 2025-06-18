@@ -190,10 +190,10 @@ export async function PATCH(request) {
       await mongoose.connect(process.env.MONGODB_URI);
     }
 
-    await Order.updateMany(
-      { _id: { $in: ids } },
-      { $set: { status } }
-    );
+await Order.updateMany(
+  { _id: { $in: ids } },
+  { $set: status === "served" ? { status, servedAt: new Date() } : { status } }
+);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -13,6 +13,7 @@ const OrderSchema = new mongoose.Schema({
   ],
   status: { type: String, default: "pending" },
   createdAt: { type: Date, default: Date.now },
+  servedAt: { type: Date },
 });
 
 export default mongoose.models.Order || mongoose.model("Order", OrderSchema);

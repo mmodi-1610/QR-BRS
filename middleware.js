@@ -9,8 +9,8 @@ export async function middleware(request) {
 
   // Allow public routes
   if (
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register") ||
+    pathname === "/login" ||
+    pathname === "/register" ||
     pathname.startsWith("/api")
   ) {
     return NextResponse.next();
@@ -25,29 +25,35 @@ export async function middleware(request) {
     // Verify JWT
     const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET));
 
-
     // Role-based route protection
     if (pathname.startsWith("/adminDashboard") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-
-   if (pathname.startsWith("/menuBuilder") && payload.role !== "admin") {
+    if (pathname.startsWith("/menuBuilder") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-
     if (pathname.startsWith("/QRGenerator") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-
-   if (pathname.startsWith("/orderManagement") && payload.role !== "admin") {
+    if (pathname.startsWith("/orderManagement") && payload.role !== "admin") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-
     if (pathname.startsWith("/kitchenDashboard") && payload.role !== "kitchen") {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-
+    // Protect root page: redirect to dashboard based on role
+    if (pathname === "/") {
+      if (payload.role === "admin") {
+        return NextResponse.redirect(new URL("/adminDashboard", request.url));
+      }
+      if (payload.role === "kitchen") {
+        return NextResponse.redirect(new URL("/kitchenDashboard", request.url));
+      }
+      // Add more roles as needed
+      // Or redirect to login if role is not recognized
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
 
     // Allow access
     return NextResponse.next();
@@ -63,6 +69,7 @@ export const config = {
     "/kitchenDashboard/:path*",
     "/menuBuilder/:path*",
     "/orderManagement/:path*",
-    "/QRGenerator/:path*"
+    "/QRGenerator/:path*",
+    "/"
   ],
 };
