@@ -438,13 +438,13 @@ function CustomerPageInner() {
                     ? "Requesting..."
                     : "Call Waiter"}
                 </button>
-                <button
+                {/* <button
                   className="flex-1 py-3 rounded font-bold text-white bg-blue-600 hover:bg-blue-700 transition"
                   onClick={handlePayOnline}
                   disabled={billLoading}
                 >
                   {billLoading ? "Processing..." : "Pay Online"}
-                </button>
+                </button> */}
               </div>
             </div>
           )}
