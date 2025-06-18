@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import axios from "axios";
 import { Eye, EyeOff } from "react-feather"; // Import icons
+import { motion } from "framer-motion";
 
 function LoginForm() {
   const router = useRouter();
@@ -206,24 +207,22 @@ function LoginForm() {
 
       {/* Submit Button */}
       <div className="d-grid gap-2">
-        <button
-          type="submit"
-          className="btn btn-primary btn-lg"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <span
-                className="spinner-border spinner-border-sm me-2"
-                role="status"
-                aria-hidden="true"
-              ></span>
-              Signing in...
-            </>
-          ) : (
-            "Sign In"
-          )}
-        </button>
+        <motion.button
+        type="submit"
+        disabled={isLoading}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full bg-gradient-to-r from-[#6a11cb] to-[#2575fc] text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isLoading ? (
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+            Signing in...
+          </div>
+        ) : (
+          "Sign In"
+        )}
+      </motion.button>
       </div>
     </form>
   );

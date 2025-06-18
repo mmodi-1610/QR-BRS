@@ -1,52 +1,52 @@
-"use client";
 import { useState } from "react";
-import { Eye, EyeOff } from "react-feather";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 
+// Password input component
 const PasswordInput = ({
   label,
   name,
   placeholder,
   value,
   error,
-  required = false,
   onChange,
   showPassword,
   toggleShowPassword,
   disabled = false,
 }) => (
-  <div className="mb-3 relative">
-    <label htmlFor={name} className="block mb-1 text-xs font-medium">
-      {label}
-    </label>
+  <div className="relative">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Lock className="h-4 w-4 text-gray-400" />
+    </div>
     <input
-      id={name}
       type={showPassword[name] ? "text" : "password"}
       name={name}
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      required={required}
-      autoComplete="off"
+      required
       disabled={disabled}
-      className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
+      className={`w-full pl-9 pr-10 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all ${
         error ? "border-red-500" : "border-gray-300"
-      } pr-8`}
+      }`}
     />
     <button
       type="button"
       onClick={() => toggleShowPassword(name)}
-      className="absolute right-2 top-1/7 transform translate-y-2 text-gray-600 hover:text-gray-900 focus:outline-none"
-      aria-label={showPassword[name] ? "Hide password" : "Show password"}
-      tabIndex={0}
-      style={{ lineHeight: 0 }}
+      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+      tabIndex={-1}
     >
-      {showPassword[name] ? <EyeOff size={18} /> : <Eye size={18} />}
+      {showPassword[name] ? (
+        <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+      ) : (
+        <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+      )}
     </button>
     {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
   </div>
 );
 
-function RegisterForm({ onRegistered }) {
+export default function RegisterForm({ onRegistered = () => {} }) {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -135,153 +135,168 @@ function RegisterForm({ onRegistered }) {
     setIsLoading(true);
 
     try {
-      await fetch("/api/user/register", {
+      // Only send required fields to backend
+      const payload = {
+        username: formData.username,
+        email: formData.email,
+        adminPassword: formData.adminPassword,
+        kitchenPassword: formData.kitchenPassword,
+      };
+
+      const response = await fetch("/api/user/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          adminPassword: formData.adminPassword,
-          kitchenPassword: formData.kitchenPassword,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      alert("Registration successful! You can now log in.");
-      onRegistered();
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert("Registration successful! You can now log in.");
+        onRegistered();
+        setFormData({
+          username: "",
+          email: "",
+          adminPassword: "",
+          kitchenPassword: "",
+          confirmAdminPassword: "",
+          confirmKitchenPassword: "",
+        });
+      } else {
+        setErrorMessage(data.message || "Registration failed. Please try again.");
+        setShowError(true);
+      }
     } catch (error) {
-      setErrorMessage(error.message || "Registration failed. Please try again.");
+      setErrorMessage(error && error.message ? error.message : "Registration failed. Please try again.");
       setShowError(true);
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md mx-auto p-1">
+    <div className="max-h-96 overflow-y-auto pr-2">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {showError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
+            {errorMessage}
+          </div>
+        )}
 
-      {showError && (
-        <div
-          className="mb-4 p-2 bg-red-100 text-red-700 rounded-md"
-          role="alert"
-          aria-live="assertive"
-        >
-          {errorMessage}
+        {/* Username */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <User className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            name="username"
+            type="text"
+            placeholder="Enter username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+            className={`w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all ${
+              errors.username ? "border-red-500" : "border-gray-300"
+            }`}
+          />
+          {errors.username && (
+            <p className="text-red-500 text-xs mt-1">{errors.username}</p>
+          )}
         </div>
-      )}
 
-      {/* Username */}
-      <div className="mb-3">
-        <label htmlFor="username" className="block mb-1 text-xs font-medium">
-          Username
-        </label>
-        <input
-          id="username"
-          name="username"
-          type="text"
-          placeholder="Enter username"
-          value={formData.username}
+        {/* Email */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Mail className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            name="email"
+            type="email"
+            placeholder="Enter email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+            className={`w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all ${
+              errors.email ? "border-red-500" : "border-gray-300"
+            }`}
+          />
+          {errors.email && (
+            <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+          )}
+        </div>
+
+        {/* Admin Password */}
+        <PasswordInput
+          label="Admin Password"
+          name="adminPassword"
+          placeholder="Enter admin password"
+          value={formData.adminPassword}
+          error={errors.adminPassword}
           onChange={handleChange}
-          required
+          showPassword={showPassword}
+          toggleShowPassword={handleTogglePassword}
           disabled={isLoading}
-          className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
-            errors.username ? "border-red-500" : "border-gray-300"
-          }`}
         />
-        {errors.username && (
-          <p className="text-red-500 text-xs mt-1">{errors.username}</p>
-        )}
-      </div>
 
-      {/* Email */}
-      <div className="mb-3">
-        <label htmlFor="email" className="block mb-1 text-xs font-medium">
-          Email Address
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="Enter email"
-          value={formData.email}
+        {/* Confirm Admin Password */}
+        <PasswordInput
+          label="Confirm Admin Password"
+          name="confirmAdminPassword"
+          placeholder="Confirm admin password"
+          value={formData.confirmAdminPassword}
+          error={errors.confirmAdminPassword}
           onChange={handleChange}
-          required
+          showPassword={showPassword}
+          toggleShowPassword={handleTogglePassword}
           disabled={isLoading}
-          className={`w-full px-2 py-1.5 text-sm border rounded-md focus:outline-none ${
-            errors.email ? "border-red-500" : "border-gray-300"
-          }`}
         />
-        {errors.email && (
-          <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-        )}
-      </div>
 
-      {/* Admin Password */}
-      <PasswordInput
-        label="Admin Password"
-        name="adminPassword"
-        placeholder="Enter admin password"
-        value={formData.adminPassword}
-        error={errors.adminPassword}
-        required
-        onChange={handleChange}
-        showPassword={showPassword}
-        toggleShowPassword={handleTogglePassword}
-        disabled={isLoading}
-      />
+        {/* Kitchen Password */}
+        <PasswordInput
+          label="Kitchen Password"
+          name="kitchenPassword"
+          placeholder="Enter kitchen password"
+          value={formData.kitchenPassword}
+          error={errors.kitchenPassword}
+          onChange={handleChange}
+          showPassword={showPassword}
+          toggleShowPassword={handleTogglePassword}
+          disabled={isLoading}
+        />
 
-      {/* Confirm Admin Password */}
-      <PasswordInput
-        label="Confirm Admin Password"
-        name="confirmAdminPassword"
-        placeholder="Confirm admin password"
-        value={formData.confirmAdminPassword}
-        error={errors.confirmAdminPassword}
-        required
-        onChange={handleChange}
-        showPassword={showPassword}
-        toggleShowPassword={handleTogglePassword}
-        disabled={isLoading}
-      />
+        {/* Confirm Kitchen Password */}
+        <PasswordInput
+          label="Confirm Kitchen Password"
+          name="confirmKitchenPassword"
+          placeholder="Confirm kitchen password"
+          value={formData.confirmKitchenPassword}
+          error={errors.confirmKitchenPassword}
+          onChange={handleChange}
+          showPassword={showPassword}
+          toggleShowPassword={handleTogglePassword}
+          disabled={isLoading}
+        />
 
-      {/* Kitchen Password */}
-      <PasswordInput
-        label="Kitchen Password"
-        name="kitchenPassword"
-        placeholder="Enter kitchen password"
-        value={formData.kitchenPassword}
-        error={errors.kitchenPassword}
-        required
-        onChange={handleChange}
-        showPassword={showPassword}
-        toggleShowPassword={handleTogglePassword}
-        disabled={isLoading}
-      />
-
-      {/* Confirm Kitchen Password */}
-      <PasswordInput
-        label="Confirm Kitchen Password"
-        name="confirmKitchenPassword"
-        placeholder="Confirm kitchen password"
-        value={formData.confirmKitchenPassword}
-        error={errors.confirmKitchenPassword}
-        required
-        onChange={handleChange}
-        showPassword={showPassword}
-        toggleShowPassword={handleTogglePassword}
-        disabled={isLoading}
-      />
-
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition disabled:opacity-50"
-      >
-        {isLoading ? "Registering..." : "Register"}
-      </button>
-    </form>
+        <motion.button
+          type="submit"
+          disabled={isLoading}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full bg-gradient-to-r from-[#6a11cb] to-[#2575fc] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Creating account...
+            </div>
+          ) : (
+            "Create Account"
+          )}
+        </motion.button>
+      </form>
+    </div>
   );
 }
-
-export default RegisterForm;
