@@ -1,3 +1,4 @@
+
 "use client"
 import { useEffect, useState } from "react"
 import { Printer, CheckCircle, PlusCircle, X, Clock, Users, DollarSign, ShoppingBag } from "lucide-react"
@@ -22,9 +23,8 @@ function getUserIdFromToken() {
 function CustomerRequestBar({ requests, onResolve }) {
   return (
     <div className="w-full flex flex-col items-center mt-8 mb-8">
-      <div className="w-full max-w-4xl rounded-2xl shadow-xl bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 overflow-hidden">
+      <div className="w-full max-w-4xl rounded-2xl shadow-xl bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 overflow-hidden h-50">
         <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-400 px-8 py-5">
-
           <div className="flex items-center text-white">
             <div className="bg-white/20 rounded-full p-2 mr-4">
               <Users className="w-6 h-6" />
@@ -40,7 +40,8 @@ function CustomerRequestBar({ requests, onResolve }) {
             )}
           </div>
         </div>
-        <div className="p-6">
+        {/* Only the list is scrollable */}
+        <div className="p-6 h-full">
           {requests.length === 0 ? (
             <div className="text-center py-8">
               <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
@@ -50,7 +51,7 @@ function CustomerRequestBar({ requests, onResolve }) {
               <p className="text-gray-400 text-sm">Customer requests will appear here</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '13.5rem' }}>
               {requests
                 .filter((r) => r.status === "pending")
                 .map((r) => (

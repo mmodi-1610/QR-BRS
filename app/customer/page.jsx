@@ -17,6 +17,9 @@ function CustomerPageInner() {
   const [billLoading, setBillLoading] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
 
+  // NEW: Track pending customer requests for this table
+  const [customerRequests, setCustomerRequests] = useState([]);
+
   // Always check backend for main order state and fetch unpaid orders
   const fetchOrderState = async () => {
     if (restaurantId && table) {
@@ -45,6 +48,18 @@ function CustomerPageInner() {
     }
   };
 
+  // Fetch pending customer requests for this table
+  const fetchCustomerRequests = async () => {
+    if (restaurantId && table) {
+      const res = await fetch(
+        `/api/order?customerRequest=1&restaurantId=${restaurantId}&table=${table}`
+      );
+      const data = await res.json();
+      setCustomerRequests((data.requests || []).filter(r => r.status === "pending"));
+    }
+  };
+
+  // Fetch menu and order state, and poll for requests
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
@@ -53,10 +68,18 @@ function CustomerPageInner() {
         const menuData = await menuRes.json();
         setMenu(menuData.menu);
         await fetchOrderState();
+        await fetchCustomerRequests();
       }
       setLoading(false);
     }
     fetchData();
+
+    // Poll for pending requests every 4 seconds
+    const interval = setInterval(() => {
+      fetchCustomerRequests();
+    }, 4000);
+    return () => clearInterval(interval);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId, table]);
 
@@ -127,7 +150,7 @@ function CustomerPageInner() {
       });
       setCart([]);
       setReorderCart([]);
-      await fetchOrderState(); // Always check backend after placing order
+      await fetchOrderState();
       alert("Order placed!");
     } else {
       // Place reorder (only reorderCart)
@@ -143,7 +166,7 @@ function CustomerPageInner() {
         body: JSON.stringify(payload),
       });
       setReorderCart([]);
-      await fetchOrderState(); // Always check backend after reorder
+      await fetchOrderState();
       alert("Reorder placed!");
     }
   };
@@ -175,6 +198,10 @@ function CustomerPageInner() {
     });
   });
 
+  // --- NEW: Prevent repeated requests until resolved ---
+  const hasPendingWaiterRequest = customerRequests.some(r => r.type === "waiter");
+  const hasPendingBillRequest = customerRequests.some(r => r.type === "bill");
+
   // Call for bill handler (API triggers staff notification)
   const handleCallForBill = async () => {
     setBillLoading(true);
@@ -189,6 +216,7 @@ function CustomerPageInner() {
         }),
       });
       alert("Staff has been notified. Please wait for your bill.");
+      await fetchCustomerRequests();
     } catch {
       alert("Failed to send request. Please try again.");
     }
@@ -209,6 +237,7 @@ function CustomerPageInner() {
         }),
       });
       alert("Waiter is coming to your table.");
+      await fetchCustomerRequests();
     } catch {
       alert("Failed to send request. Please try again.");
     }
@@ -390,16 +419,24 @@ function CustomerPageInner() {
                 <button
                   className="flex-1 py-3 rounded font-bold text-white bg-orange-500 hover:bg-orange-600 transition"
                   onClick={handleCallForBill}
-                  disabled={billLoading}
+                  disabled={billLoading || hasPendingBillRequest}
                 >
-                  {billLoading ? "Calling Staff..." : "Call for Bill"}
+                  {hasPendingBillRequest
+                    ? "Bill Requested"
+                    : billLoading
+                    ? "Calling Staff..."
+                    : "Call for Bill"}
                 </button>
                 <button
                   className="flex-1 py-3 rounded font-bold text-white bg-gray-800 hover:bg-gray-900 transition"
                   onClick={handleCallForWaiter}
-                  disabled={requestLoading}
+                  disabled={requestLoading || hasPendingWaiterRequest}
                 >
-                  {requestLoading ? "Requesting..." : "Call Waiter"}
+                  {hasPendingWaiterRequest
+                    ? "Waiter Requested"
+                    : requestLoading
+                    ? "Requesting..."
+                    : "Call Waiter"}
                 </button>
                 <button
                   className="flex-1 py-3 rounded font-bold text-white bg-blue-600 hover:bg-blue-700 transition"
